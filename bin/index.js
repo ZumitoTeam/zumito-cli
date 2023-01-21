@@ -27,6 +27,31 @@ program.command('create')
                     name: 'name',
                     message: 'Project name:',
                 }).then((answers) => answers.name);
+                let envData = await inquirer.prompt([
+                    {
+                        type: 'input',
+                        name: 'MONGOURI',
+                        message: 'MongoDB connection string:',
+                    }, {
+                        type: 'input',
+                        name: 'TOKEN',
+                        message: 'Discord bot token:',
+                    }, {
+                        type: 'input',
+                        name: 'CLIENT_ID',
+                        message: 'Discord client ID:',
+                    }, {
+                        type: 'input',
+                        name: 'CLIENT_SECRET',
+                        message: 'Discord client secret:',
+                    }, {
+                        type: 'input',
+                        name: 'BOTPREFIX',
+                        message: 'Default prefix:',
+                    }
+                ]);
+                envData.SECRET_KEY = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
                 // Run git clone in shell
                 execSync(`git clone https://github.com/ZumitoTeam/zumito-template.git ${projectName}`, (err, stdout, stderr) => {
                     if (err) {
@@ -40,6 +65,14 @@ program.command('create')
                         throw err;
                     }
                 });
+
+                // Generate .env file
+                let envOutput = '';
+                Object.keys(envData).forEach((key) => {
+                    envOutput += `${key}=${envData[key]}\n`;
+                });
+                fs.writeFileSync(`./${projectName}/.env`, envOutput);
+
                 console.log('----------------------------');
                 console.log('Project created successfully');
                 console.log(`Run "${chalk.blue("npm run start")}" to start the bot`);
