@@ -1,0 +1,26 @@
+{
+  "name": "zumito-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for fast boilerplating a discord bot using zumito-framework",
+  "bin": {
+    "zumito-cli": "./bin/index.js"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZumitoTeam/zumito-cli.git"
+  },
+  "author": "fernandomema",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ZumitoTeam/zumito-cli/issues"
+  },
+  "homepage": "https://github.com/ZumitoTeam/zumito-cli#readme",
+  "dependencies": {
+    "chalk": "^5.2.0",
+    "commander": "^10.0.0",
+    "ejs": "^3.1.8",
+    "inquirer": "^9.1.4"
+  },
+  "type": "module"
+}

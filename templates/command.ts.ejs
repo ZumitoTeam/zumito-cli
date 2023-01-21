@@ -1,0 +1,13 @@
+import { Command, CommandParameters, ZumitoFramework, CommandType, SelectMenuParameters } from "zumito-framework";
+
+export class <%= name?.charAt(0).toUpperCase() + name?.slice(1); %> extends Command {
+
+    execute({ message, interaction, args, client, framework, guildSettings }: CommandParameters): void {
+        // Command code
+    }
+
+    async selectMenu({ path, interaction, client, framework, guildSettings }: SelectMenuParameters): Promise<void> {
+        
+    }
+
+}
