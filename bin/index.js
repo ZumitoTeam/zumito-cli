@@ -16,6 +16,29 @@ program
     .description(pjson.description)
     .version(pjson.version);
 
+function verifyPwd() {
+    if (!fs.existsSync('./src/modules')) {
+        throw new Error('src/modules folder does not exist. Verify that you are in the root of your project');
+    }
+}
+
+function validateOrCreateModule(moduleName) {
+
+    // check if src/modules exists
+    verifyPwd();
+
+    // Check if module exists
+    if (!fs.existsSync(`./src/modules/${moduleName}`)) {
+        // create module folder
+        fs.mkdirSync(`./src/modules/${moduleName}`);
+        // create module default folders
+        let folders = ['commands', 'events', 'translations'];
+        folders.forEach((folder) => {
+            fs.mkdirSync(`./src/modules/${moduleName}/${folder}`);
+        });
+    }
+}
+
 program.command('create')
     .description('Generate elements from a template, Like a project, command, event, etc.')
     .argument('<type>', 'Thing you want to create. Ex: project, command, event, etc.')
@@ -29,10 +52,6 @@ program.command('create')
                 }).then((answers) => answers.name);
                 let envData = await inquirer.prompt([
                     {
-                        type: 'input',
-                        name: 'MONGOURI',
-                        message: 'MongoDB connection string:',
-                    }, {
                         type: 'input',
                         name: 'TOKEN',
                         message: 'Discord bot token:',
@@ -48,8 +67,54 @@ program.command('create')
                         type: 'input',
                         name: 'BOTPREFIX',
                         message: 'Default prefix:',
+                    }, {
+                        type: 'list',
+                        name: 'DATABASE_TYPE',
+                        message: 'Database type: (tingodb is recommended for development) (mongodb is recommended for production)',
+                        choices: ['sqlite', 'mysql', 'postgres', 'mongodb', 'tingodb', 'couchdb'],
+
                     }
                 ]);
+                if (envData.DATABASE_TYPE === 'mysql' || envData.DATABASE_TYPE === 'postgres') {
+                    // Combine envData wit new prompt
+                    envData = Object.assign(envData, await inquirer.prompt([
+                        {
+                            type: 'input',
+                            name: 'DATABASE_HOST',
+                            message: 'Database host:',
+                            default: 'localhost',
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_PORT',
+                            message: 'Database port:',
+                            default: envData.DATABASE_TYPE === 'mysql' ? 3306 : 5432,
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_NAME',
+                            message: 'Database name:',
+                            default: 'zumito',
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_USER',
+                            message: 'Database user:',
+                            default: 'root',
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_PASSWORD',
+                            message: 'Database password:',
+                        }
+                    ]));
+                } else if (envData.DATABASE_TYPE === 'mongodb') {
+                    // Combine envData wit new prompt
+                    envData = Object.assign(envData, await inquirer.prompt([
+                        {
+                            type: 'input',
+                            name: 'DATABASE_URI',
+                            message: 'Database URI:',
+                            default: 'mongodb://localhost:27017/zumito',
+                        }
+                    ]));
+                }
                 envData.SECRET_KEY = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
                 // Run git clone in shell
@@ -81,10 +146,8 @@ program.command('create')
             }
             case 'module': {
                 // check if src/modules exists
-                if (!fs.existsSync('./src/modules')) {
-                    console.log('src/modules folder does not exist. Verify that you are in the root of your project');
-                    return;
-                }
+                verifyPwd();
+
                 const moduleName = await inquirer.prompt({
                     type: 'input',
                     name: 'name',
@@ -103,12 +166,7 @@ program.command('create')
                 }
 
                 // create module folder
-                fs.mkdirSync(`./src/modules/${moduleName}`);
-                // create module default folders
-                let folders = ['commands', 'events', 'translations'];
-                folders.forEach((folder) => {
-                    fs.mkdirSync(`./src/modules/${moduleName}/${folder}`);
-                });
+                validateOrCreateModule(moduleName);
 
                 // Check if module type is custom behavior and create index.ts
                 if (moduleType === 'custom behavior') {
@@ -139,16 +197,7 @@ program.command('create')
                     message: 'Command name:',
                 }).then((answers) => answers.name);
                 
-                // Check if module exists
-                if (!fs.existsSync(`./src/modules/${moduleName}`)) {
-                    // create module folder
-                    fs.mkdirSync(`./src/modules/${moduleName}`);
-                    // create module default folders
-                    let folders = ['commands', 'events', 'translations'];
-                    folders.forEach((folder) => {
-                        fs.mkdirSync(`./src/modules/${moduleName}/${folder}`);
-                    });
-                }
+                validateOrCreateModule(moduleName);
 
                 // Check if command already exists
                 if (fs.existsSync(`./src/modules/${moduleName}/commands/${commandName}.ts`)) {
@@ -171,13 +220,88 @@ program.command('create')
                 break;
             }
             case 'event': {
-                // TODO
-                console.log('Not implemented yet');
+                const moduleName = await inquirer.prompt({
+                    type: 'input',
+                    name: 'name',
+                    message: 'Module name:',
+                }).then((answers) => answers.name);
+                // Ask for event name, show this list of events (messageCreate, interactionCreate, load) and allow to write custom event
+                const eventName = await inquirer.prompt({
+                    type: 'list',
+                    name: 'name',
+                    message: 'Event name:',
+                    choices: ['messageCreate', 'interactionCreate', 'load'],
+                    validate: function(answer) {
+                        if (answer.trim() === '') {
+                          return 'Please enter a value';
+                        } else {
+                            return true;
+                        }
+                    }
+                }).then((answers) => answers.name);
+                
+                validateOrCreateModule(moduleName);
+
+                // Check if event already exists
+                if (fs.existsSync(`./src/modules/${moduleName}/events/${eventName}.ts`)) {
+                    console.log('Event with that name already exists in this module');
+                    return;
+                }
+
+                // Capitalize first letter, replace spaces or dashes with camel case
+                let eventClassName = eventName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+                    return index === 0 ? word.toUpperCase() : word.toUpperCase();
+                }).replace(/\s+/g, '').replace(/-/g, '');
+
+                // Load template
+                let template = fs.readFileSync(root + '/templates/event.ts.ejs', 'utf8');
+                let templateOutput = ejs.render(template, {
+                    name: eventClassName,
+                });
+                // Write file
+                fs.writeFileSync(`./src/modules/${moduleName}/events/${modelName}.ts`, templateOutput);
+                console.log(`Command ${chalk.blue(eventName)} created ${chalk.green('successfully')}`);
+                break;
+
+            }
+            case 'model': {
+                const moduleName = await inquirer.prompt({
+                    type: 'input',
+                    name: 'name',
+                    message: 'Module name:',
+                }).then((answers) => answers.name);
+                const modelName = await inquirer.prompt({
+                    type: 'input',
+                    name: 'name',
+                    message: 'Model name: (CamelCase)',
+                }).then((answers) => answers.name);
+
+                validateOrCreateModule(moduleName);
+
+                // Check if model already exists
+                if (fs.existsSync(`./src/modules/${moduleName}/models/${modelName}.ts`)) {
+                    console.log('Model with that name already exists in this module');
+                    return;
+                }
+
+                // Capitalize first letter, replace spaces or dashes with camel case
+                let modelParsedName = modelName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+                    return index === 0 ? word.toUpperCase() : word.toUpperCase();
+                }).replace(/\s+/g, '').replace(/-/g, '');
+
+                // Load template
+                let template = fs.readFileSync(root + '/templates/model.ts.ejs', 'utf8');
+                let templateOutput = ejs.render(template, {
+                    name: modelParsedName,
+                });
+                // Write file
+                fs.writeFileSync(`./src/modules/${moduleName}/commands/${modelName}.ts`, templateOutput);
+                console.log(`Command ${chalk.blue(modelName)} created ${chalk.green('successfully')}`);
                 break;
             }
             default: {
                 console.log('Invalid type');
-                console.log('Valid types: project, module, command, event');
+                console.log('Valid types: project, module, command, event, model');
                 break;
             }
         }
