@@ -109,9 +109,28 @@ program.command('create')
                     envData = Object.assign(envData, await inquirer.prompt([
                         {
                             type: 'input',
-                            name: 'DATABASE_URI',
-                            message: 'Database URI:',
-                            default: 'mongodb://localhost:27017/zumito',
+                            name: 'DATABASE_HOST',
+                            message: 'Database host:',
+                            default: 'localhost',
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_PORT',
+                            message: 'Database port:',
+                            default: 27017,
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_NAME',
+                            message: 'Database name:',
+                            default: 'zumito',
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_USER',
+                            message: 'Database user:',
+                            default: 'root',
+                        }, {
+                            type: 'input',
+                            name: 'DATABASE_PASSWORD',
+                            message: 'Database password:',
                         }
                     ]));
                 }
