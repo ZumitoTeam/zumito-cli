@@ -13,7 +13,17 @@ jobs:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
-      - run: npm publish --tag ${{ env.TAG }}
+      - run: |
+          # Get the latest published version
+          latest_version=$(npm view <package-name> version)
+          
+          # Increase the version number
+          new_version=$(node -p "require('semver').inc('$latest_version', 'patch')")
+          
+          # Update the package.json file
+          npm version "$new_version"
+          
+          # Publish the new version
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-          TAG: ${{ env.GITHUB_REF }}
