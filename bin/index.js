@@ -281,7 +281,6 @@ program.command('create')
                 let eventClassName = eventName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
                     return index === 0 ? word.toUpperCase() : word.toUpperCase();
                 }).replace(/\s+/g, '').replace(/-/g, '');
-
                 // Load template
                 let template = fs.readFileSync(root + '/templates/event.ts.ejs', 'utf8');
                 let templateOutput = ejs.render(template, {
