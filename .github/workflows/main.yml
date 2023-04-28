@@ -24,7 +24,7 @@ jobs:
           new_version=$(node -p "require('semver').inc('$latest_version', 'patch')")
           
           # Update the package.json file
-          npm version "$new_version"
+          npm version "$new_version" --no-git-tag-version
 
           # Log the new version to the console
           echo "New version: $new_version"
