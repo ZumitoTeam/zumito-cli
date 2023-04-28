@@ -22,6 +22,9 @@ jobs:
           
           # Update the package.json file
           npm version "$new_version"
+
+          # Log the new version to the console
+          echo "New version: $new_version"
           
           # Publish the new version
           npm publish
