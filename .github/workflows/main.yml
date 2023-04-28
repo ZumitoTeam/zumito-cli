@@ -16,6 +16,9 @@ jobs:
       - run: |
           # Get the latest published version
           latest_version=$(npm view zumito-cli version)
+
+          # npm install semver
+          npm install semver
           
           # Increase the version number
           new_version=$(node -p "require('semver').inc('$latest_version', 'patch')")
