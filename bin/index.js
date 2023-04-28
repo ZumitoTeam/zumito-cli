@@ -159,8 +159,9 @@ program.command('create')
 
                 console.log('----------------------------');
                 console.log('Project created successfully');
-                console.log(`Run "${chalk.blue("npm run start")}" to start the bot`);
-                console.log(`Run "${chalk.blue("git init && git add -A && git commit -m \"Initial commit\"")}" to initialize git`);
+                console.log(`Run "${chalk.blue(`cd ${projectName}`)}" to change working directory`);
+                console.log(`Run "${chalk.blue("npm run dev")}" to start the bot`);
+                console.log(`Run "${chalk.blue("git init && git add -A && git commit -m \"Initial commit\"")}" to initialize git (optional)`);
                 break;
             }
             case 'module': {
@@ -236,6 +237,8 @@ program.command('create')
                 // Write file
                 fs.writeFileSync(`./src/modules/${moduleName}/commands/${commandName}.ts`, templateOutput);
                 console.log(`Command ${chalk.blue(commandName)} created ${chalk.green('successfully')}`);
+                // Log file path
+                console.log(`File path: ${chalk.blue(`./src/modules/${moduleName}/commands/${commandName}.ts`)}`);
                 break;
             }
             case 'event': {
@@ -245,11 +248,11 @@ program.command('create')
                     message: 'Module name:',
                 }).then((answers) => answers.name);
                 // Ask for event name, show this list of events (messageCreate, interactionCreate, load) and allow to write custom event
-                const eventName = await inquirer.prompt({
+                let eventName = await inquirer.prompt({
                     type: 'list',
                     name: 'name',
                     message: 'Event name:',
-                    choices: ['messageCreate', 'interactionCreate', 'load'],
+                    choices: ['messageCreate', 'interactionCreate', 'load', 'other'],
                     validate: function(answer) {
                         if (answer.trim() === '') {
                           return 'Please enter a value';
@@ -258,6 +261,13 @@ program.command('create')
                         }
                     }
                 }).then((answers) => answers.name);
+                if (eventName === 'other') {
+                    eventName = await inquirer.prompt({
+                        type: 'input',
+                        name: 'name',
+                        message: 'Event name:',
+                    }).then((answers) => answers.name);
+                }
                 
                 validateOrCreateModule(moduleName);
 
@@ -278,8 +288,10 @@ program.command('create')
                     name: eventClassName,
                 });
                 // Write file
-                fs.writeFileSync(`./src/modules/${moduleName}/events/${modelName}.ts`, templateOutput);
-                console.log(`Command ${chalk.blue(eventName)} created ${chalk.green('successfully')}`);
+                fs.writeFileSync(`./src/modules/${moduleName}/events/${eventName}.ts`, templateOutput);
+                console.log(`Event ${chalk.blue(eventName)} created ${chalk.green('successfully')}`);
+                // Log file path
+                console.log(`File path: ${chalk.blue(`./src/modules/${moduleName}/events/${eventName}.ts`)}`);
                 break;
 
             }
@@ -314,8 +326,10 @@ program.command('create')
                     name: modelParsedName,
                 });
                 // Write file
-                fs.writeFileSync(`./src/modules/${moduleName}/commands/${modelName}.ts`, templateOutput);
-                console.log(`Command ${chalk.blue(modelName)} created ${chalk.green('successfully')}`);
+                fs.writeFileSync(`./src/modules/${moduleName}/models/${modelName}.ts`, templateOutput);
+                console.log(`Model ${chalk.blue(modelName)} created ${chalk.green('successfully')}`);
+                // log file path
+                console.log(`File path: ${chalk.blue(`./src/modules/${moduleName}/models/${modelName}.ts`)}`);
                 break;
             }
             default: {
