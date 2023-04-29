@@ -219,6 +219,11 @@ program.command('create')
                 
                 validateOrCreateModule(moduleName);
 
+                // Check if commands folder exists
+                if (!fs.existsSync(`./src/modules/${moduleName}/commands`)) {
+                    fs.mkdirSync(`./src/modules/${moduleName}/commands`);
+                }
+
                 // Check if command already exists
                 if (fs.existsSync(`./src/modules/${moduleName}/commands/${commandName}.ts`)) {
                     console.log('Command with that name already exists');
@@ -271,6 +276,12 @@ program.command('create')
                 
                 validateOrCreateModule(moduleName);
 
+
+                // Check if events folder exists
+                if (!fs.existsSync(`./src/modules/${moduleName}/events`)) {
+                    fs.mkdirSync(`./src/modules/${moduleName}/events`);
+                }
+
                 // Check if event already exists
                 if (fs.existsSync(`./src/modules/${moduleName}/events/${eventName}.ts`)) {
                     console.log('Event with that name already exists in this module');
@@ -307,6 +318,11 @@ program.command('create')
                 }).then((answers) => answers.name);
 
                 validateOrCreateModule(moduleName);
+
+                // Check if models folder exists
+                if (!fs.existsSync(`./src/modules/${moduleName}/models`)) {
+                    fs.mkdirSync(`./src/modules/${moduleName}/models`);
+                }
 
                 // Check if model already exists
                 if (fs.existsSync(`./src/modules/${moduleName}/models/${modelName}.ts`)) {
