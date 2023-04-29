@@ -18,9 +18,12 @@
   "homepage": "https://github.com/ZumitoTeam/zumito-cli#readme",
   "dependencies": {
     "chalk": "^5.2.0",
+    "cli-alerts": "^1.2.2",
     "commander": "^10.0.0",
     "ejs": "^3.1.8",
-    "inquirer": "^9.1.4"
+    "inquirer": "^9.1.4",
+    "modern-errors-cli": "^2.3.0",
+    "youch-terminal": "^2.2.0"
   },
   "type": "module"
 }

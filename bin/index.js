@@ -7,6 +7,7 @@ import { execSync } from 'child_process';
 import chalk from 'chalk';
 import fs from 'fs';
 import ejs from 'ejs';
+import alert from 'cli-alerts';
 
 const root = new URL('../', import.meta.url).pathname;
 
@@ -18,7 +19,15 @@ program
 
 function verifyPwd() {
     if (!fs.existsSync('./src/modules')) {
-        throw new Error('src/modules folder does not exist. Verify that you are in the root of your project');
+        alert({
+            type: 'error',
+            msg: 'src/modules folder does not exist.',
+        });
+        alert({
+            type: 'warning',
+            msg: 'Are you running this command in the root folder of your project?',
+        });
+        process.exit(1);
     }
 }
 
@@ -348,8 +357,15 @@ program.command('create')
                 break;
             }
             default: {
-                console.log('Invalid type');
-                console.log('Valid types: project, module, command, event, model');
+                alert({
+                    type: 'error',
+                    name: 'Invalid type',
+                    msg: 'A valid type is required to proceed',
+                })
+                alert({
+                    type: 'info',
+                    msg: 'Valid types: project, module, command, event, model',
+                });
                 break;
             }
         }
