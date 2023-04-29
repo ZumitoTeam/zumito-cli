@@ -5,7 +5,9 @@
   "bin": {
     "zumito-cli": "./bin/index.js"
   },
-  "scripts": {},
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 jest"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ZumitoTeam/zumito-cli.git"
@@ -25,5 +27,8 @@
     "modern-errors-cli": "^2.3.0",
     "youch-terminal": "^2.2.0"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "jest": "^29.5.0"
+  }
 }
