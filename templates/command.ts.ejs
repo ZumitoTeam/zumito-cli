@@ -2,6 +2,8 @@ import { Command, CommandParameters, ZumitoFramework, CommandType, SelectMenuPar
 
 export class <%= name?.charAt(0).toUpperCase() + name?.slice(1); %> extends Command {
 
+    type = CommandType.<%= type %>;
+
     execute({ message, interaction, args, client, framework, guildSettings }: CommandParameters): void {
         // Command code
     }

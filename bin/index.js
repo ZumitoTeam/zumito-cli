@@ -228,19 +228,27 @@ createGroup.command('module')
 
 createGroup.command('command')
     .description('Generate a command')
-    .argument('[moduleName]', 'Module name')
-    .argument('[commandName]', 'Command name')
-    .action(async (moduleName, commandName) => {
+    .option('-m, --moduleName <moduleName>', 'Module name')
+    .option('-n, --name <name>', 'Command name')
+    .option('-t, --type <type>', 'Command type')
+    .action(async ({moduleName, name, type}) => {
         if (!moduleName) moduleName = await inquirer.prompt({
             type: 'input',
             name: 'moduleName',
             message: 'Module name:',
         }).then((answers) => answers.moduleName);
-        if (!commandName) commandName = await inquirer.prompt({
+        if (!name) name = await inquirer.prompt({
             type: 'input',
-            name: 'commandName',
+            name: 'name',
             message: 'Command name:',
-        }).then((answers) => answers.commandName);
+        }).then((answers) => answers.name);
+        const commandTypes = ['prefix', 'slash', 'any'];
+        if (!type || !commandTypes.includes(type)) type = await inquirer.prompt({
+            type: 'list',
+            name: 'type',
+            message: 'Command type:',
+            choices: commandTypes,
+        }).then((answers) => answers.type);
 
         validateOrCreateModule(moduleName);
 
@@ -250,31 +258,32 @@ createGroup.command('command')
         }
 
         // Check if command already exists
-        if (fs.existsSync(`./src/modules/${moduleName}/commands/${commandName}.ts`)) {
+        if (fs.existsSync(`./src/modules/${moduleName}/commands/${name}.ts`)) {
             console.log('Command with that name already exists');
             return;
         }
 
         // Capitalize first letter, replace spaces or dashes with camel case
-        let commandClassName = commandName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+        let commandClassName = name.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
             return index === 0 ? word.toUpperCase() : word.toUpperCase();
         }).replace(/\s+/g, '').replace(/-/g, '');
         // Load template
         let template = fs.readFileSync(root + '/templates/command.ts.ejs', 'utf8');
         let templateOutput = ejs.render(template, {
             name: commandClassName,
+            type,
         });
         // Write file
-        fs.writeFileSync(`./src/modules/${moduleName}/commands/${commandName}.ts`, templateOutput);
+        fs.writeFileSync(`./src/modules/${moduleName}/commands/${name}.ts`, templateOutput);
 
         // Log success
         alert({
             type: 'success',
-            msg: `Command ${commandName} created successfully`,
+            msg: `Command ${name} created successfully`,
         });
         alert({
             type: 'info',
-            msg: `You can find it in src/modules/${moduleName}/commands/${commandName}.ts`,
+            msg: `You can find it in src/modules/${moduleName}/commands/${name}.ts`,
         });
     });
 

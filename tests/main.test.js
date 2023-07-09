@@ -35,12 +35,24 @@ test('should create custom module', async () => {
 });
 
 test('should create common command on existent module', async () => {
-    execSync(`${projectCommand} create command testCommon test`);
+    const params = [
+        { name: 'moduleName', value: 'testCommon' },
+        { name: 'name', value: 'test' },
+        { name: 'type', value: 'any' },
+    ];
+    const commandParams = params.map(param => `--${param.name} "${param.value}"`).join(' ');
+    execSync(`${projectCommand} create command ${commandParams}`);
     expect(fs.existsSync('test/src/modules/testCommon/commands/test.ts')).toBe(true);
 });
 
 test('should create custom command on non-existent module', async () => {
-    execSync(`${projectCommand} create command module1 test`);
+    const params = [
+        { name: 'moduleName', value: 'module1' },
+        { name: 'name', value: 'test' },
+        { name: 'type', value: 'any' },
+    ];
+    const commandParams = params.map(param => `--${param.name} "${param.value}"`).join(' ');
+    execSync(`${projectCommand} create command ${commandParams}`);
     expect(fs.existsSync('test/src/modules/module1/commands/test.ts')).toBe(true);
 });
 
