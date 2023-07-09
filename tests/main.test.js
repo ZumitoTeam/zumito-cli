@@ -6,11 +6,21 @@ const command = './bin/index.js'
 const projectCommand = 'cd test && ../bin/index.js'
 
 test('should create a new project', async () => {
-    execSync(`${command} create project test token client_id client_secret zt- tingodb`);
+    const params = [
+        { name: 'projectName', value: 'test' },
+        { name: 'discordToken', value: 'token' },
+        { name: 'discordClientId', value: 'client_id' },
+        { name: 'discordClientSecret', value: 'client_secret' },
+        { name: 'botPrefix', value: 'zt-' },
+        { name: 'databaseType', value: 'tingodb' },
+    ]
+    const commandParams = params.map(param => `--${param.name} "${param.value}"`).join(' ');
+    execSync(`${command} create project ${commandParams}`);
     expect(fs.existsSync('test')).toBe(true); 
     expect(fs.existsSync('test/.env')).toBe(true);
     expect(fs.existsSync('test/node_modules')).toBe(true);
     expect(fs.readFileSync('test/.env', 'utf8')).not.toContain('DATABASE_HOST');
+    expect(fs.existsSync('test/.git')).toBe(false);
 });
 
 test('should create common module', async () => {

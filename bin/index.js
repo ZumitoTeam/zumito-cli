@@ -54,38 +54,38 @@ const createGroup = program
 
 createGroup.command('project')
     .description('Create a new project')
-    .argument('[projectName]', 'Project name')
-    .argument('[token]', 'Discord bot token')
-    .argument('[clientId]', 'Discord client ID')
-    .argument('[clientSecret]', 'Discord client secret')
-    .argument('[botPrefix]', 'Default prefix')
-    .argument('[databaseType]', 'Database type')
-    .argument('[databaseHost]', 'Database host')
-    .argument('[databasePort]', 'Database port')
-    .argument('[databaseName]', 'Database name')
-    .argument('[databaseUser]', 'Database user')
-    .argument('[databasePassword]', 'Database password')
-    .action(async (projectName, token, clientId, clientSecret, botPrefix, databaseType, databaseHost, databasePort, databaseName, databaseUser, databasePassword) => {
+    .option('--projectName <projectName>', 'Project name')
+    .option('--discordToken <discordToken>', 'Discord bot token')
+    .option('--discordClientId <discordClientId>', 'Discord client ID')
+    .option('--discordClientSecret <discordClientSecret>', 'Discord client secret')
+    .option('--botPrefix <botPrefix>', 'Default prefix')
+    .option('--databaseType <databaseType>', 'Database type')
+    .option('--databaseHost <databaseHost>', 'Database host')
+    .option('--databasePort <databasePort>', 'Database port')
+    .option('--databaseName <databaseName>', 'Database name')
+    .option('--databaseUser <databaseUser>', 'Database user')
+    .option('--databasePassword <databasePassword>', 'Database password')
+    .action(async ({projectName, discordToken, discordClientId, discordClientSecret, botPrefix, databaseType, databaseHost, databasePort, databaseName, databaseUser, databasePassword}) => {
         if (!projectName) projectName = await inquirer.prompt({
             type: 'input',
             name: 'projectName',
             message: 'Project name:',
         }).then((answers) => answers.projectName);
-        if (!token) token = await inquirer.prompt({
+        if (!discordToken) discordToken = await inquirer.prompt({
             type: 'input',
-            name: 'token',
+            name: 'discordToken',
             message: 'Discord bot token:',
-        }).then((answers) => answers.token);
-        if (!clientId) clientId = await inquirer.prompt({
+        }).then((answers) => answers.discordToken);
+        if (!discordClientId) discordClientId = await inquirer.prompt({
             type: 'input',
-            name: 'clientId',
+            name: 'discordClientId',
             message: 'Discord client ID:',
-        }).then((answers) => answers.clientId);
-        if (!clientSecret) clientSecret = await inquirer.prompt({
+        }).then((answers) => answers.discordClientId);
+        if (!discordClientSecret) discordClientSecret = await inquirer.prompt({
             type: 'input',
-            name: 'clientSecret',
+            name: 'discordClientSecret',
             message: 'Discord client secret:',
-        }).then((answers) => answers.clientSecret);
+        }).then((answers) => answers.discordClientSecret);
         if (!botPrefix) botPrefix = await inquirer.prompt({
             type: 'input',
             name: 'botPrefix',
@@ -129,9 +129,9 @@ createGroup.command('project')
 
         let envData = {
             SECRET_KEY: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
-            DISCORD_TOKEN: token,
-            DISCORD_CLIENT_ID: clientId,
-            DISCORD_CLIENT_SECRET: clientSecret,
+            DISCORD_TOKEN: discordToken,
+            DISCORD_CLIENT_ID: discordClientId,
+            DISCORD_CLIENT_SECRET: discordClientSecret,
             BOT_PREFIX: botPrefix,
             DATABASE_TYPE: databaseType,
             DATABASE_HOST: databaseHost,
@@ -160,6 +160,7 @@ createGroup.command('project')
                 throw err;
             }
         });
+        fs.rmdirSync(`./${projectName}/.git`, { recursive: true });
 
         // Generate .env file
         let envOutput = '';
