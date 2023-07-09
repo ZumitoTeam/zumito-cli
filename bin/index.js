@@ -179,19 +179,19 @@ createGroup.command('project')
 
 createGroup.command('module')
     .description('Generate a module')
-    .argument('[moduleName]', 'Module name')
-    .argument('[moduleType]', 'Module type')
-    .action(async (moduleName, moduleType) => {
+    .option('-n, --name <name>', 'Module name')
+    .option('-t, --type <type>', 'Module type')
+    .action(async ({name, type}) => {
         // check if src/modules exists
         verifyPwd();
 
         // verify and ask for parameters
-        if (!moduleName) moduleName = await inquirer.prompt({
+        if (!name) name = await inquirer.prompt({
             type: 'input',
             name: 'moduleName',
             message: 'Module name:',
         }).then((answers) => answers.moduleName);
-        if (!moduleType || !['common', 'custom_behavior'].includes(moduleType)) moduleType = await inquirer.prompt({
+        if (!type || !['common', 'custom_behavior'].includes(type)) type = await inquirer.prompt({
             type: 'list',
             name: 'type',
             message: 'Module type:',
@@ -199,12 +199,12 @@ createGroup.command('module')
         }).then((answers) => answers.type);
 
         // create module folder
-        validateOrCreateModule(moduleName);
+        validateOrCreateModule(name);
 
         // Check if module type is custom behavior and create index.ts
-        if (moduleType === 'custom_behavior') {
+        if (type === 'custom_behavior') {
             // Capitalize first letter, replace spaces or dashes with camel case
-            let moduleClassName = moduleName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+            let moduleClassName = name.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
                 return index === 0 ? word.toUpperCase() : word.toUpperCase();
             }).replace(/\s+/g, '').replace(/-/g, '');
             // Load template
@@ -213,16 +213,16 @@ createGroup.command('module')
                 name: moduleClassName,
             });
             // Write file
-            fs.writeFileSync(`./src/modules/${moduleName}/index.ts`, templateOutput);
+            fs.writeFileSync(`./src/modules/${name}/index.ts`, templateOutput);
         }
-        console.log(`Module ${chalk.blue(moduleName)} created ${chalk.green('successfully')}`);
+        console.log(`Module ${chalk.blue(name)} created ${chalk.green('successfully')}`);
         alert({
             type: 'success',
-            msg: `Module ${moduleName} created successfully`,
+            msg: `Module ${name} created successfully`,
         });
         alert({
             type: 'info',
-            msg: `You can find it in src/modules/${moduleName}`,
+            msg: `You can find it in src/modules/${name}`,
         });
     });
 
@@ -289,21 +289,21 @@ createGroup.command('command')
 
 createGroup.command('event')
     .description('Generate an event')
-    .argument('[moduleName]', 'Module name')
-    .argument('[eventName]', 'Event name')
-    .action(async (moduleName, eventName) => {
+    .option('-m, --moduleName <moduleName>', 'Module name')
+    .option('-n, --name <name>', 'Event name')
+    .action(async ({ moduleName, name }) => {
         if (!moduleName) moduleName = await inquirer.prompt({
             type: 'input',
             name: 'moduleName',
             message: 'Module name:',
         }).then((answers) => answers.moduleName);
-        if (!eventName) eventName = await inquirer.prompt({
+        if (!name) name = await inquirer.prompt({
             type: 'input',
             name: 'eventName',
             message: 'Event name:',
         }).then((answers) => answers.eventName);
-        if (eventName === 'other') {
-            eventName = await inquirer.prompt({
+        if (name === 'other') {
+            name = await inquirer.prompt({
                 type: 'input',
                 name: 'name',
                 message: 'Event name:',
@@ -319,13 +319,13 @@ createGroup.command('event')
         }
 
         // Check if event already exists
-        if (fs.existsSync(`./src/modules/${moduleName}/events/${eventName}.ts`)) {
+        if (fs.existsSync(`./src/modules/${moduleName}/events/${name}.ts`)) {
             console.log('Event with that name already exists in this module');
             return;
         }
 
         // Capitalize first letter, replace spaces or dashes with camel case
-        let eventClassName = eventName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+        let eventClassName = name.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
             return index === 0 ? word.toUpperCase() : word.toUpperCase();
         }).replace(/\s+/g, '').replace(/-/g, '');
         // Load template
@@ -334,30 +334,30 @@ createGroup.command('event')
             name: eventClassName,
         });
         // Write file
-        fs.writeFileSync(`./src/modules/${moduleName}/events/${eventName}.ts`, templateOutput);
+        fs.writeFileSync(`./src/modules/${moduleName}/events/${name}.ts`, templateOutput);
 
         // Log success
         alert({
             type: 'success',
-            msg: `Event ${eventName} created successfully`,
+            msg: `Event ${name} created successfully`,
         });
         alert({
             type: 'info',
-            msg: `You can find it in src/modules/${moduleName}/events/${eventName}.ts`,
+            msg: `You can find it in src/modules/${moduleName}/events/${name}.ts`,
         });
     });
 
 createGroup.command('model')
     .description('Generate a database model')
-    .argument('[moduleName]', 'Module name')
-    .argument('[modelName]', 'Model name')
-    .action(async (moduleName, modelName) => {
+    .option('-m, --moduleName <moduleName>', 'Module name')
+    .option('-n, --name <name>', 'Model name')
+    .action(async ({ moduleName, name }) => {
         if (!moduleName) moduleName = await inquirer.prompt({
             type: 'input',
             name: 'moduleName',
             message: 'Module name:',
         }).then((answers) => answers.moduleName);
-        if (!modelName) modelName = await inquirer.prompt({
+        if (!name) name = await inquirer.prompt({
             type: 'input',
             name: 'modelName',
             message: 'Model name:',
@@ -371,13 +371,13 @@ createGroup.command('model')
         }
 
         // Check if model already exists
-        if (fs.existsSync(`./src/modules/${moduleName}/models/${modelName}.ts`)) {
+        if (fs.existsSync(`./src/modules/${moduleName}/models/${name}.ts`)) {
             console.log('Model with that name already exists in this module');
             return;
         }
 
         // Capitalize first letter, replace spaces or dashes with camel case
-        let modelParsedName = modelName.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+        let modelParsedName = name.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
             return index === 0 ? word.toUpperCase() : word.toUpperCase();
         }).replace(/\s+/g, '').replace(/-/g, '');
 
@@ -387,16 +387,16 @@ createGroup.command('model')
             name: modelParsedName,
         });
         // Write file
-        fs.writeFileSync(`./src/modules/${moduleName}/models/${modelName}.ts`, templateOutput);
+        fs.writeFileSync(`./src/modules/${moduleName}/models/${name}.ts`, templateOutput);
 
         // Log success
         alert({
             type: 'success',
-            msg: `Model ${modelName} created successfully`,
+            msg: `Model ${name} created successfully`,
         });
         alert({
             type: 'info',
-            msg: `You can find it in src/modules/${moduleName}/models/${modelName}.ts`,
+            msg: `You can find it in src/modules/${moduleName}/models/${name}.ts`,
         });
     });
 
