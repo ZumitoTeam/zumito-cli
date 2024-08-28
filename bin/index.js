@@ -41,7 +41,7 @@ function validateOrCreateModule(moduleName) {
         // create module folder
         fs.mkdirSync(`./src/modules/${moduleName}`);
         // create module default folders
-        let folders = ['commands', 'events', 'translations'];
+        let folders = ['commands', 'events', 'translations', 'routes'];
         folders.forEach((folder) => {
             fs.mkdirSync(`./src/modules/${moduleName}/${folder}`);
         });
