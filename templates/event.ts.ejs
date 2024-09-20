@@ -3,6 +3,7 @@ import { FrameworkEvent, EventParameters } from 'zumito-framework';
 export class <%= name %> extends FrameworkEvent {
 
     once = false;
+    source = 'discord';
 
     async execute({ interaction, client, framework, }: EventParameters): Promise<void> {
         // Event code
