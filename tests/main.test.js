@@ -92,6 +92,22 @@ test('should create model on non-existent module', async () => {
     expect(fs.existsSync('test/src/modules/module3/models/test.ts')).toBe(true);
 });
 
+test('should create route on existent module', async () => {
+    runCommand('create route', [
+        { name: 'moduleName', value: 'testCommon' },
+        { name: 'name', value: 'test' }
+    ]);
+    expect(fs.existsSync('test/src/modules/testCommon/routes/Test.ts')).toBe(true);
+});
+
+test('should create route on non-existent module', async () => {
+    runCommand('create route', [
+        { name: 'moduleName', value: 'module4' },
+        { name: 'name', value: 'test' }
+    ]);
+    expect(fs.existsSync('test/src/modules/module4/routes/Test.ts')).toBe(true);
+});
+
 
 
 afterAll(() => {
