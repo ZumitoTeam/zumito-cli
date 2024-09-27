@@ -25,6 +25,7 @@
     "ejs": "^3.1.9",
     "inquirer": "^9.2.7",
     "modern-errors-cli": "^4.0.0",
+    "ts-morph": "^23.0.0",
     "youch-terminal": "^2.2.2"
   },
   "type": "module",

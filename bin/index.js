@@ -8,6 +8,8 @@ import chalk from 'chalk';
 import fs from 'fs';
 import ejs from 'ejs';
 import alert from 'cli-alerts';
+import { Project, StructureKind } from 'ts-morph';
+import path from 'path';
 
 const root = new URL('../', import.meta.url).pathname;
 
@@ -399,5 +401,146 @@ createGroup.command('model')
             msg: `You can find it in src/modules/${moduleName}/models/${name}.ts`,
         });
     });
+
+    createGroup.command('route')
+    .description('Generate a web route')
+    .option('-m, --moduleName <moduleName>', 'Module name')
+    .option('-n, --name <name>', 'route name')
+    .action(async ({ moduleName, name }) => {
+        if (!moduleName) moduleName = await inquirer.prompt({
+            type: 'input',
+            name: 'moduleName',
+            message: 'Module name:',
+        }).then((answers) => answers.moduleName);
+        if (!name) name = await inquirer.prompt({
+            type: 'input',
+            name: 'routeName',
+            message: 'Route name:',
+        }).then((answers) => answers.routeName);
+        
+        validateOrCreateModule(moduleName);
+
+        // Check if models folder exists
+        if (!fs.existsSync(`./src/modules/${moduleName}/models`)) {
+            fs.mkdirSync(`./src/modules/${moduleName}/models`);
+        }
+
+        // Check if model already exists
+        if (fs.existsSync(`./src/modules/${moduleName}/routes/${name}.ts`)) {
+            console.log('Route with that name already exists in this module');
+            return;
+        }
+
+        // Capitalize first letter, replace spaces or dashes with camel case
+        let routeParsedName = name.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+            return index === 0 ? word.toUpperCase() : word.toUpperCase();
+        }).replace(/\s+/g, '').replace(/-/g, '');
+
+        // Create a new project
+        const project = new Project();
+
+        // Add a new source file
+        const sourceFile = project.createSourceFile( path.join("./src", "modules", moduleName, 'routes', `${routeParsedName}.ts`), "", { overwrite: true });
+
+        // Add imports
+        sourceFile.addImportDeclaration({
+            namedImports: ["Route", "RouteMethod"],
+            moduleSpecifier: "zumito-framework",
+        });
+
+        // Create the class 'AdminLogin'
+        const adminLoginClass = sourceFile.addClass({
+            name: routeParsedName,
+            extends: "Route",
+            isExported: true,
+        });
+
+        // Add 'method' property
+        adminLoginClass.addProperty({
+            name: "method",
+            type: "RouteMethod",
+            initializer: "RouteMethod.get",
+        });
+
+        // Add 'path' property
+        adminLoginClass.addProperty({
+            name: "path",
+            type: "string",
+            initializer: "'/example'",
+        });
+
+        // Add 'execute' method
+        adminLoginClass.addMethod({
+            name: "execute",
+            parameters: [
+                { name: "req", type: "any" },
+                { name: "res", type: "any" },
+            ],
+            statements: "// Your route code goes here",
+        });
+
+        // Save the generated file
+        await project.save()
+        alert({
+            type: 'success',
+            msg: `Model ${name} created successfully`,
+        });
+        alert({
+            type: 'info',
+            msg: `You can find it in src/modules/${moduleName}/routes/${name}.ts`,
+        });
+    });
+
+const addGroup = program
+    .command('add')
+    .description('Generate elements from a template, Like command methods, etc.');
+
+addGroup.command('commandSelectMenu')
+    .description('Add select menu method to a command')
+    .option('-c, --command <Command file path>', 'Path to the command file')
+    .action(async ({ command }) => {
+
+        const project = new Project();
+
+        // Add your TypeScript file to the project
+        const filePath = command;
+        const sourceFile = project.addSourceFileAtPath(filePath);
+
+        const classes = sourceFile.getClasses();
+
+        if (classes.length === 0) {
+            console.error("No classes found in file.");
+            return;
+        }
+
+        // Take the first class
+        const myClass = classes[0];
+        const className = myClass.getName();
+
+        if (!className) {
+            console.error("Class name not found.");
+            return;
+        }
+
+        
+        // Add a new method to the class
+        myClass.addMethod({
+            name: "newMethod",
+            statements: `console.log("This is a new method!");`,
+        });
+
+        // Save the changes to the file
+        sourceFile.save().then(() => {
+            console.log("Method added successfully!");
+            alert({
+                type: 'success',
+                msg: `Model created successfully`,
+            });
+        });
+
+        // Log success
+        
+    });
+
 
 program.parse();
