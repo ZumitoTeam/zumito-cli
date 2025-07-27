@@ -2,8 +2,7 @@ const vscode = require('vscode');
 const path = require('path');
 
 function runCLI(args) {
-    const cliPath = path.join(__dirname, '..', 'bin', 'index.js');
-    const command = `node ${cliPath} ${args}`;
+    const command = `npx zumito-cli ${args}`;
     const terminal = vscode.window.createTerminal('Zumito CLI');
     terminal.sendText(command);
     terminal.show();
