@@ -108,6 +108,22 @@ test('should create route on non-existent module', async () => {
     expect(fs.existsSync('test/src/modules/module4/routes/Test.ts')).toBe(true);
 });
 
+test('should create embed builder on existent module', async () => {
+    runCommand('create embedBuilder', [
+        { name: 'moduleName', value: 'testCommon' },
+        { name: 'name', value: 'Help' }
+    ]);
+    expect(fs.existsSync('test/src/modules/testCommon/services/embeds/HelpEmbedBuilder.ts')).toBe(true);
+});
+
+test('should create embed builder on non-existent module', async () => {
+    runCommand('create embedBuilder', [
+        { name: 'moduleName', value: 'module5' },
+        { name: 'name', value: 'Help' }
+    ]);
+    expect(fs.existsSync('test/src/modules/module5/services/embeds/HelpEmbedBuilder.ts')).toBe(true);
+});
+
 
 
 afterAll(() => {

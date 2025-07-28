@@ -5,10 +5,11 @@ This extension exposes basic Zumito CLI commands inside VS Code.
 ## Features
 - `Zumito: Create Project` – run the CLI to scaffold a new project.
 - `Zumito: Create Module` – generate a module using the CLI.
+- `Zumito: Create Embed Builder` – generate an embed builder service.
 
 Each command opens a terminal and executes the corresponding CLI command so you can continue interacting with it.
 
-When you run `Zumito: Create Project`, the extension prompts for the project name, Discord credentials and other configuration values before invoking the CLI. `Zumito: Create Module` asks for the module name and type.
+When you run `Zumito: Create Project`, the extension prompts for the project name, Discord credentials and other configuration values before invoking the CLI. `Zumito: Create Module` asks for the module name and type. `Zumito: Create Embed Builder` requests the module name and service name.
 
 ## Building the VSIX
 

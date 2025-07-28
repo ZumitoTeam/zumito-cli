@@ -10,7 +10,8 @@
   "main": "./extension.js",
   "activationEvents": [
     "onCommand:zumito-cli.createProject",
-    "onCommand:zumito-cli.createModule"
+    "onCommand:zumito-cli.createModule",
+    "onCommand:zumito-cli.createEmbedBuilder"
   ],
   "contributes": {
     "commands": [
@@ -21,11 +22,16 @@
       {
         "command": "zumito-cli.createModule",
         "title": "Zumito: Create Module"
+      },
+      {
+        "command": "zumito-cli.createEmbedBuilder",
+        "title": "Zumito: Create Embed Builder"
       }
     ]
   },
   "scripts": {
-    "package": "vsce package"
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "vsce": "^2.15.0"

@@ -50,7 +50,17 @@ function activate(context) {
         runCLI(`create module --name "${moduleName}" --type "${moduleType}"`);
     });
 
-    context.subscriptions.push(createProject, createModule);
+    const createEmbedBuilder = vscode.commands.registerCommand('zumito-cli.createEmbedBuilder', async () => {
+        const moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+        if (!moduleName) { return; }
+
+        const serviceName = await vscode.window.showInputBox({ prompt: 'Service name' });
+        if (!serviceName) { return; }
+
+        runCLI(`create embedBuilder --moduleName "${moduleName}" --name "${serviceName}"`);
+    });
+
+    context.subscriptions.push(createProject, createModule, createEmbedBuilder);
 }
 
 function deactivate() {}

@@ -12,6 +12,7 @@ import {command} from '../lib/commands/create/command.js';
 import {event} from '../lib/commands/create/event.js';
 import {model} from '../lib/commands/create/model.js';
 import {route} from '../lib/commands/create/route.js';
+import {embedBuilder} from '../lib/commands/create/embedBuilder.js';
 
 
 const root = new URL('../', import.meta.url).pathname;
@@ -25,7 +26,7 @@ program
 const groups = [{
     command: "create",
     description: 'Generate elements from a template, Like a project, command, event, etc.',
-    commands: [project, module, command, event, model, route]
+    commands: [project, module, command, event, model, route, embedBuilder]
 }]
 
 groups.forEach(group => {
