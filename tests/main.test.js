@@ -124,6 +124,19 @@ test('should create embed builder on non-existent module', async () => {
     expect(fs.existsSync('test/src/modules/module5/services/embeds/HelpEmbedBuilder.ts')).toBe(true);
 });
 
+test('should inject service into command', async () => {
+    const file = 'src/modules/testCommon/commands/test.ts';
+    runCommand('add injectService', [
+        { name: 'file', value: file },
+        { name: 'servicePath', value: '../services/embeds/HelpEmbedBuilder' },
+        { name: 'serviceClass', value: 'HelpEmbedBuilder' },
+        { name: 'propertyName', value: 'helpEmbedBuilder' }
+    ]);
+    const content = fs.readFileSync(`test/${file}`, 'utf8');
+    expect(content).toContain('HelpEmbedBuilder');
+    expect(content).toContain('ServiceContainer.getService(HelpEmbedBuilder)');
+});
+
 
 
 afterAll(() => {

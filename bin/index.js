@@ -13,6 +13,7 @@ import {event} from '../lib/commands/create/event.js';
 import {model} from '../lib/commands/create/model.js';
 import {route} from '../lib/commands/create/route.js';
 import {embedBuilder} from '../lib/commands/create/embedBuilder.js';
+import {injectService} from '../lib/commands/add/injectService.js';
 
 
 const root = new URL('../', import.meta.url).pathname;
@@ -108,6 +109,25 @@ addGroup.command('commandSelectMenu')
 
         // Log success
         
+    });
+
+addGroup.command(injectService.command)
+    .description(injectService.description)
+    .option('--file <file>', 'File to modify')
+    .option('--servicePath <servicePath>', 'Service import path')
+    .option('--serviceClass <serviceClass>', 'Service class name')
+    .option('--propertyName <propertyName>', 'Property name')
+    .action(async (params) => {
+        for (let option of injectService.options) {
+            if (!params[option.key]) {
+                params[option.key] = await inquirer.prompt({
+                    type: option.type,
+                    name: option.key,
+                    message: `${option.label}:`
+                }).then(a => a[option.key]);
+            }
+        }
+        await injectService.action(params);
     });
 
 

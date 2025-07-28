@@ -1,11 +1,26 @@
 const vscode = require('vscode');
 const path = require('path');
+const { execSync } = require('child_process');
+const fs = require('fs');
 
 function runCLI(args) {
     const command = `npx zumito-cli ${args}`;
     const terminal = vscode.window.createTerminal('Zumito CLI');
     terminal.sendText(command);
     terminal.show();
+}
+
+function findServiceFiles(dir, fileList = []) {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+        const fullPath = path.join(dir, file);
+        if (fs.statSync(fullPath).isDirectory()) {
+            findServiceFiles(fullPath, fileList);
+        } else if (fullPath.toLowerCase().includes('services') && file.endsWith('.ts')) {
+            fileList.push(fullPath);
+        }
+    }
+    return fileList;
 }
 
 function activate(context) {
@@ -60,7 +75,60 @@ function activate(context) {
         runCLI(`create embedBuilder --moduleName "${moduleName}" --name "${serviceName}"`);
     });
 
-    context.subscriptions.push(createProject, createModule, createEmbedBuilder);
+    const injectServiceCmd = vscode.commands.registerCommand('zumito-cli.injectService', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('No active editor found. Please open a TypeScript file.');
+            return;
+        }
+
+        if (editor.document.isDirty) {
+            const save = await vscode.window.showWarningMessage(
+                'The file has unsaved changes. Do you want to save it before proceeding?',
+                { modal: true },
+                'Save'
+            );
+            if (save !== 'Save') {
+                vscode.window.showErrorMessage('Operation cancelled because the file was not saved.');
+                return;
+            }
+            await editor.document.save();
+        }
+
+        const file = editor.document.fileName;
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        if (!workspaceFolder) {
+            vscode.window.showErrorMessage('No workspace folder found.');
+            return;
+        }
+
+        let services = [];
+        try {
+            services = findServiceFiles(workspaceFolder).map(fullPath => {
+                const filename = path.basename(fullPath, '.ts');
+                return `${fullPath}:${filename}`;
+            });
+        } catch (e) {
+            vscode.window.showErrorMessage('Failed to list services');
+            return;
+        }
+
+        const pick = await vscode.window.showQuickPick(services.map(s => {
+            const [p, f] = s.split(':');
+            return { label: f, description: p };
+        }), { placeHolder: 'Select service to inject' });
+        if (!pick) { return; }
+
+        const className = path.basename(pick.description, '.ts');
+        const relativePath = path.relative(path.dirname(file), pick.description).replace(/\\/g,'/').replace(/\.ts$/, '');
+        const defaultName = className.charAt(0).toLowerCase() + className.slice(1);
+        const propertyName = await vscode.window.showInputBox({ prompt: 'Property name', value: defaultName });
+        if (!propertyName) { return; }
+
+        runCLI(`add injectService --file "${file}" --servicePath "${relativePath}" --serviceClass "${className}" --propertyName "${propertyName}"`);
+    });
+
+    context.subscriptions.push(createProject, createModule, createEmbedBuilder, injectServiceCmd);
 }
 
 function deactivate() {}
