@@ -120,13 +120,13 @@ npx zumito-cli <command>
     ```
     (You will be prompted for the module name and type.)
 
-*   **`create embedBuilder`**: Creates an embed builder service.
+*   **`create embedBuilder`**: Creates an embed builder service. If the service already exists you can provide `--methodName` to add a new method.
     ```bash
     zumito-cli create embedBuilder
     ```
     (You will be prompted for the module name and service name.)
 
-*   **`create actionRowBuilder`**: Creates an action row builder service.
+*   **`create actionRowBuilder`**: Creates an action row builder service. If the service already exists you can provide `--methodName` to add a new method.
     ```bash
     zumito-cli create actionRowBuilder
     ```

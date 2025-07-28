@@ -124,6 +124,16 @@ test('should create embed builder on non-existent module', async () => {
     expect(fs.existsSync('test/src/modules/module5/services/embeds/HelpEmbedBuilder.ts')).toBe(true);
 });
 
+test('should add method to existing embed builder', async () => {
+    runCommand('create embedBuilder', [
+        { name: 'moduleName', value: 'testCommon' },
+        { name: 'name', value: 'Help' },
+        { name: 'methodName', value: 'extraEmbed' }
+    ]);
+    const content = fs.readFileSync('test/src/modules/testCommon/services/embeds/HelpEmbedBuilder.ts', 'utf8');
+    expect(content).toContain('extraEmbed');
+});
+
 test('should create action row builder on existent module', async () => {
     runCommand('create actionRowBuilder', [
         { name: 'moduleName', value: 'testCommon' },
@@ -138,6 +148,16 @@ test('should create action row builder on non-existent module', async () => {
         { name: 'name', value: 'CoinFlip' }
     ]);
     expect(fs.existsSync('test/src/modules/module6/services/actionRows/CoinFlipActionRowBuilder.ts')).toBe(true);
+});
+
+test('should add method to existing action row builder', async () => {
+    runCommand('create actionRowBuilder', [
+        { name: 'moduleName', value: 'testCommon' },
+        { name: 'name', value: 'CoinFlip' },
+        { name: 'methodName', value: 'extraRow' }
+    ]);
+    const content = fs.readFileSync('test/src/modules/testCommon/services/actionRows/CoinFlipActionRowBuilder.ts', 'utf8');
+    expect(content).toContain('extraRow');
 });
 
 test('should inject service into command', async () => {
