@@ -13,6 +13,7 @@ import {event} from '../lib/commands/create/event.js';
 import {model} from '../lib/commands/create/model.js';
 import {route} from '../lib/commands/create/route.js';
 import {embedBuilder} from '../lib/commands/create/embedBuilder.js';
+import {actionRowBuilder} from '../lib/commands/create/actionRowBuilder.js';
 import {injectService} from '../lib/commands/add/injectService.js';
 
 
@@ -27,7 +28,7 @@ program
 const groups = [{
     command: "create",
     description: 'Generate elements from a template, Like a project, command, event, etc.',
-    commands: [project, module, command, event, model, route, embedBuilder]
+    commands: [project, module, command, event, model, route, embedBuilder, actionRowBuilder]
 }]
 
 groups.forEach(group => {

@@ -2,7 +2,7 @@
   "name": "zumito-extension",
   "displayName": "Zumito CLI Extension",
   "description": "VSCode extension to use Zumito CLI utilities within the editor.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "FernandoMerino",
   "engines": {
     "vscode": "^1.70.0"
@@ -12,6 +12,7 @@
     "onCommand:zumito-cli.createProject",
     "onCommand:zumito-cli.createModule",
     "onCommand:zumito-cli.createEmbedBuilder",
+    "onCommand:zumito-cli.createActionRowBuilder",
     "onCommand:zumito-cli.injectService"
   ],
   "contributes": {
@@ -27,6 +28,10 @@
       {
         "command": "zumito-cli.createEmbedBuilder",
         "title": "Zumito: Create Embed Builder"
+      },
+      {
+        "command": "zumito-cli.createActionRowBuilder",
+        "title": "Zumito: Create Action Row Builder"
       },
       {
         "command": "zumito-cli.injectService",

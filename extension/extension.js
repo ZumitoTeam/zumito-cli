@@ -75,6 +75,16 @@ function activate(context) {
         runCLI(`create embedBuilder --moduleName "${moduleName}" --name "${serviceName}"`);
     });
 
+    const createActionRowBuilder = vscode.commands.registerCommand('zumito-cli.createActionRowBuilder', async () => {
+        const moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+        if (!moduleName) { return; }
+
+        const serviceName = await vscode.window.showInputBox({ prompt: 'Service name' });
+        if (!serviceName) { return; }
+
+        runCLI(`create actionRowBuilder --moduleName "${moduleName}" --name "${serviceName}"`);
+    });
+
     const injectServiceCmd = vscode.commands.registerCommand('zumito-cli.injectService', async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -128,7 +138,7 @@ function activate(context) {
         runCLI(`add injectService --file "${file}" --servicePath "${relativePath}" --serviceClass "${className}" --propertyName "${propertyName}"`);
     });
 
-    context.subscriptions.push(createProject, createModule, createEmbedBuilder, injectServiceCmd);
+    context.subscriptions.push(createProject, createModule, createEmbedBuilder, createActionRowBuilder, injectServiceCmd);
 }
 
 function deactivate() {}

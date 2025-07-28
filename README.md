@@ -126,6 +126,12 @@ npx zumito-cli <command>
     ```
     (You will be prompted for the module name and service name.)
 
+*   **`create actionRowBuilder`**: Creates an action row builder service.
+    ```bash
+    zumito-cli create actionRowBuilder
+    ```
+    (You will be prompted for the module name and service name.)
+
 ### VS Code Extension
 
 The `zumito-cli` VS Code extension is designed to seamlessly integrate into your development workflow:

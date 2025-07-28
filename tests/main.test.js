@@ -124,6 +124,22 @@ test('should create embed builder on non-existent module', async () => {
     expect(fs.existsSync('test/src/modules/module5/services/embeds/HelpEmbedBuilder.ts')).toBe(true);
 });
 
+test('should create action row builder on existent module', async () => {
+    runCommand('create actionRowBuilder', [
+        { name: 'moduleName', value: 'testCommon' },
+        { name: 'name', value: 'CoinFlip' }
+    ]);
+    expect(fs.existsSync('test/src/modules/testCommon/services/actionRows/CoinFlipActionRowBuilder.ts')).toBe(true);
+});
+
+test('should create action row builder on non-existent module', async () => {
+    runCommand('create actionRowBuilder', [
+        { name: 'moduleName', value: 'module6' },
+        { name: 'name', value: 'CoinFlip' }
+    ]);
+    expect(fs.existsSync('test/src/modules/module6/services/actionRows/CoinFlipActionRowBuilder.ts')).toBe(true);
+});
+
 test('should inject service into command', async () => {
     const file = 'src/modules/testCommon/commands/test.ts';
     runCommand('add injectService', [
