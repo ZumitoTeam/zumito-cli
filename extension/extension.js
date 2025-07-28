@@ -65,8 +65,26 @@ function activate(context) {
         runCLI(`create module --name "${moduleName}" --type "${moduleType}"`);
     });
 
+    const listModules = (workspaceFolder) => {
+        const modulesPath = path.join(workspaceFolder, 'src', 'modules');
+        if (!fs.existsSync(modulesPath)) return [];
+        return fs.readdirSync(modulesPath).filter(f => {
+            return fs.statSync(path.join(modulesPath, f)).isDirectory();
+        });
+    };
+
     const createEmbedBuilder = vscode.commands.registerCommand('zumito-cli.createEmbedBuilder', async () => {
-        const moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        let moduleName;
+        if (workspaceFolder) {
+            const modules = listModules(workspaceFolder);
+            if (modules.length > 0) {
+                moduleName = await vscode.window.showQuickPick(modules, { placeHolder: 'Module name' });
+            }
+        }
+        if (!moduleName) {
+            moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+        }
         if (!moduleName) { return; }
 
         const serviceName = await vscode.window.showInputBox({ prompt: 'Service name' });
@@ -76,7 +94,17 @@ function activate(context) {
     });
 
     const createActionRowBuilder = vscode.commands.registerCommand('zumito-cli.createActionRowBuilder', async () => {
-        const moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        let moduleName;
+        if (workspaceFolder) {
+            const modules = listModules(workspaceFolder);
+            if (modules.length > 0) {
+                moduleName = await vscode.window.showQuickPick(modules, { placeHolder: 'Module name' });
+            }
+        }
+        if (!moduleName) {
+            moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+        }
         if (!moduleName) { return; }
 
         const serviceName = await vscode.window.showInputBox({ prompt: 'Service name' });

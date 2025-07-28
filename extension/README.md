@@ -11,8 +11,8 @@ This extension exposes basic Zumito CLI commands inside VS Code.
 
 Each command opens a terminal and executes the corresponding CLI command so you can continue interacting with it.
 
-When you run `Zumito: Create Project`, the extension prompts for the project name, Discord credentials and other configuration values before invoking the CLI. `Zumito: Create Module` asks for the module name and type. `Zumito: Create Embed Builder` requests the module name and service name.
-`Zumito: Create Action Row Builder` also asks for the module name and service name.
+When you run `Zumito: Create Project`, the extension prompts for the project name, Discord credentials and other configuration values before invoking the CLI. `Zumito: Create Module` asks for the module name and type.
+`Zumito: Create Embed Builder` and `Zumito: Create Action Row Builder` now present a dropdown listing folders found under `src/modules` so you can quickly choose the target module before entering the service name.
 `Zumito: Inject Service` lets you select a service from your workspace and inject it into the currently selected TypeScript file.
 
 ## Building the VSIX
