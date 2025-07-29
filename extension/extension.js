@@ -40,10 +40,8 @@ function activate(context) {
         const botPrefix = await vscode.window.showInputBox({ prompt: 'Default prefix', value: 'zt-' });
         if (!botPrefix) { return; }
 
-        const databaseType = await vscode.window.showQuickPick([
-            'sqlite', 'mysql', 'postgres', 'mongodb', 'tingodb', 'couchdb'
-        ], { placeHolder: 'Database type' });
-        if (!databaseType) { return; }
+        const mongoQueryString = await vscode.window.showInputBox({ prompt: 'Mongo query string' });
+        if (!mongoQueryString) { return; }
 
         runCLI(
             `create project --projectName "${name}" ` +
@@ -51,7 +49,7 @@ function activate(context) {
             `--discordClientId "${discordClientId}" ` +
             `--discordClientSecret "${discordClientSecret}" ` +
             `--botPrefix "${botPrefix}" ` +
-            `--databaseType "${databaseType}"`
+            `--mongoQueryString "${mongoQueryString}"`
         );
     });
 

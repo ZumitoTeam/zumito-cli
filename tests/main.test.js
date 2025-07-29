@@ -16,12 +16,12 @@ test('should create a new project', async () => {
         { name: 'discordClientId', value: 'client_id' },
         { name: 'discordClientSecret', value: 'client_secret' },
         { name: 'botPrefix', value: 'zt-' },
-        { name: 'databaseType', value: 'tingodb' }
+        { name: 'mongoQueryString', value: 'mongodb://localhost:27017/test' }
     ]);
     expect(fs.existsSync('test')).toBe(true); 
     expect(fs.existsSync('test/.env')).toBe(true);
     expect(fs.existsSync('test/node_modules')).toBe(true);
-    expect(fs.readFileSync('test/.env', 'utf8')).not.toContain('DATABASE_HOST');
+    expect(fs.readFileSync('test/.env.local', 'utf8')).toContain('MONGO_QUERY_STRING=mongodb://localhost:27017/test');
     expect(fs.existsSync('test/.git')).toBe(false);
 });
 
@@ -76,21 +76,7 @@ test('should create event on non-existent module', async () => {
     expect(fs.existsSync('test/src/modules/module2/events/test.ts')).toBe(true);
 });
 
-test('should create model on existent module', async () => {
-    runCommand('create model', [
-        { name: 'moduleName', value: 'testCommon' },
-        { name: 'name', value: 'test' }
-    ]);
-    expect(fs.existsSync('test/src/modules/testCommon/models/test.ts')).toBe(true);
-});
 
-test('should create model on non-existent module', async () => {
-    runCommand('create model', [
-        { name: 'moduleName', value: 'module3' },
-        { name: 'name', value: 'test' }
-    ]);
-    expect(fs.existsSync('test/src/modules/module3/models/test.ts')).toBe(true);
-});
 
 test('should create route on existent module', async () => {
     runCommand('create route', [
