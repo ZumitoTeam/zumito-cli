@@ -15,6 +15,7 @@ import {route} from '../lib/commands/create/route.js';
 import {embedBuilder} from '../lib/commands/create/embedBuilder.js';
 import {actionRowBuilder} from '../lib/commands/create/actionRowBuilder.js';
 import {injectService} from '../lib/commands/add/injectService.js';
+import { installModule } from '../lib/commands/install/module.js';
 import { easybot } from '../lib/commands/easybot.js';
 
 
@@ -30,6 +31,10 @@ const groups = [{
     command: "create",
     description: 'Generate elements from a template, Like a project, command, event, etc.',
     commands: [project, module, command, event, model, route, embedBuilder, actionRowBuilder]
+}, {
+    command: "install",
+    description: 'Install resources into an existing project',
+    commands: [installModule]
 }]
 
 groups.forEach(group => {
