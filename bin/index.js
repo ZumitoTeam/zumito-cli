@@ -2,7 +2,7 @@
 
 import { Command } from 'commander';
 import inquirer from 'inquirer';
-import pjson from "../package.json" assert { type: "json" };
+import pjson from "../package.json" with { type: "json" };
 import alert from 'cli-alerts';
 import { Project, StructureKind } from 'ts-morph';
 import { search, Separator } from '@inquirer/prompts';
@@ -15,6 +15,7 @@ import {route} from '../lib/commands/create/route.js';
 import {embedBuilder} from '../lib/commands/create/embedBuilder.js';
 import {actionRowBuilder} from '../lib/commands/create/actionRowBuilder.js';
 import {injectService} from '../lib/commands/add/injectService.js';
+import { easybot } from '../lib/commands/easybot.js';
 
 
 const root = new URL('../', import.meta.url).pathname;
@@ -131,5 +132,27 @@ addGroup.command(injectService.command)
         await injectService.action(params);
     });
 
+const easybotCommand = program
+    .command(easybot.command)
+    .description(easybot.description);
+
+easybot.options.forEach(option => {
+    easybotCommand.option(`--${option.key} <${option.key}>`, option.label)
+});
+
+easybotCommand.action(async (params) => {
+    for (let option of easybot.options) {
+        if (option.manualParse) continue;
+        while (!params[option.key] || !(option.isValid ? option.isValid(params[option.key], option) : true)) {
+            params[option.key] = await inquirer.prompt({
+                type: option.type,
+                name: option.key,
+                message: `${option.label}:`,
+                choices: option.choices
+            }).then((answers) => answers[option.key]);
+        }
+    }
+    await easybot.action(params);
+});
 
 program.parse();
