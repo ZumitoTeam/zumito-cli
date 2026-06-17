@@ -1,14 +1,7 @@
-import { DatabaseModel } from 'zumito-framework';
+import { Collection, Field } from 'zumito-framework';
 
-export class <%= name?.charAt(0).toUpperCase() + name?.slice(1); %> extends DatabaseModel {
-    getModel(schema: any) {
-        // Return the model definition
-        return {
-            
-        };
-    }
-
-    define(model: any, models: any): void {
-        // Register model validations, relationships and methods.
-    }
+@Collection({ name: '<%= name?.toLowerCase(); %>' })
+export class <%= name?.charAt(0).toUpperCase() + name?.slice(1); %> {
+    @Field({ type: 'string', primary: true })
+    id: string;
 }
