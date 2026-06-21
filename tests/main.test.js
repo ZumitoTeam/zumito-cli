@@ -163,5 +163,5 @@ test('should inject service into command', async () => {
 
 afterAll(() => {
     // Remove test project
-    if (fs.existsSync('test')) fs.rmdirSync('test', { recursive: true });
+    if (fs.existsSync('test')) fs.rmSync('test', { recursive: true, force: true });
 });
