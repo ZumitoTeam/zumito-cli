@@ -13,7 +13,9 @@
     "onCommand:zumito-cli.createModule",
     "onCommand:zumito-cli.createEmbedBuilder",
     "onCommand:zumito-cli.createActionRowBuilder",
-    "onCommand:zumito-cli.injectService"
+    "onCommand:zumito-cli.injectService",
+    "onCommand:zumito-cli.runDev",
+    "onCommand:zumito-cli.runDebug"
   ],
   "contributes": {
     "commands": [
@@ -36,6 +38,14 @@
       {
         "command": "zumito-cli.injectService",
         "title": "Zumito: Inject Service"
+      },
+      {
+        "command": "zumito-cli.runDev",
+        "title": "Zumito: Run Dev"
+      },
+      {
+        "command": "zumito-cli.runDebug",
+        "title": "Zumito: Run Debug"
       }
     ]
   },

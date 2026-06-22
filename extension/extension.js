@@ -23,8 +23,36 @@ function findServiceFiles(dir, fileList = []) {
     return fileList;
 }
 
+async function openProjectDialog(projectDir) {
+    const openInCurrent = 'Open in current window';
+    const openInNew = 'Open in new window';
+    const choice = await vscode.window.showInformationMessage(
+        `Project created at ${projectDir}. Do you want to open it?`,
+        openInCurrent,
+        openInNew
+    );
+    if (choice === openInCurrent) {
+        const uri = vscode.Uri.file(projectDir);
+        await vscode.commands.executeCommand('vscode.openFolder', uri, false);
+    } else if (choice === openInNew) {
+        const uri = vscode.Uri.file(projectDir);
+        await vscode.commands.executeCommand('vscode.openFolder', uri, true);
+    }
+}
+
 function activate(context) {
     const createProject = vscode.commands.registerCommand('zumito-cli.createProject', async () => {
+        // 1. Folder picker — where to create the project
+        const folderResult = await vscode.window.showOpenDialog({
+            canSelectFolders: true,
+            canSelectFiles: false,
+            canSelectMany: false,
+            title: 'Select folder to create the project in'
+        });
+        if (!folderResult || folderResult.length === 0) { return; }
+        const targetDir = folderResult[0].fsPath;
+
+        // 2. Collect project info
         const name = await vscode.window.showInputBox({ prompt: 'Project name' });
         if (!name) { return; }
 
@@ -41,16 +69,38 @@ function activate(context) {
         if (!botPrefix) { return; }
 
         const mongoQueryString = await vscode.window.showInputBox({ prompt: 'Mongo query string' });
-        if (!mongoQueryString) { return; }
 
-        runCLI(
-            `create project --projectName "${name}" ` +
-            `--discordToken "${discordToken}" ` +
-            `--discordClientId "${discordClientId}" ` +
-            `--discordClientSecret "${discordClientSecret}" ` +
-            `--botPrefix "${botPrefix}" ` +
-            `--mongoQueryString "${mongoQueryString}"`
+        // 3. Run the CLI synchronously to know when it's done
+        const projectDir = path.join(targetDir, name);
+        const args = [
+            `create project`,
+            `--projectName "${name}"`,
+            `--discordToken "${discordToken}"`,
+            `--discordClientId "${discordClientId}"`,
+            `--discordClientSecret "${discordClientSecret}"`,
+            `--botPrefix "${botPrefix}"`,
+        ];
+        if (mongoQueryString) {
+            args.push(`--mongoQueryString "${mongoQueryString}"`);
+        }
+
+        await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: 'Creating Zumito project...', cancellable: false },
+            async () => {
+                try {
+                    execSync(`npx zumito-cli ${args.join(' ')}`, {
+                        cwd: targetDir,
+                        stdio: 'inherit'
+                    });
+                } catch (error) {
+                    vscode.window.showErrorMessage('Failed to create Zumito project');
+                    return;
+                }
+            }
         );
+
+        // 4. Ask to open the project
+        await openProjectDialog(projectDir);
     });
 
     const createModule = vscode.commands.registerCommand('zumito-cli.createModule', async () => {
@@ -165,8 +215,19 @@ function activate(context) {
     });
 
     context.subscriptions.push(createProject, createModule, createEmbedBuilder, createActionRowBuilder, injectServiceCmd);
+
+    const runDev = vscode.commands.registerCommand('zumito-cli.runDev', () => {
+        const terminal = vscode.window.createTerminal({ name: 'Zumito Dev' });
+        terminal.sendText('npm run dev');
+        terminal.show();
+    });
+
+    const runDebug = vscode.commands.registerCommand('zumito-cli.runDebug', () => {
+        vscode.commands.executeCommand('workbench.action.debug.start');
+    });
+
+    context.subscriptions.push(runDev, runDebug);
 }
 
 function deactivate() {}
 
-module.exports = { activate, deactivate };
