@@ -2,20 +2,14 @@
   "name": "zumito-extension",
   "displayName": "Zumito CLI Extension",
   "description": "VSCode extension to use Zumito CLI utilities within the editor.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "FernandoMerino",
   "engines": {
     "vscode": "^1.70.0"
   },
   "main": "./extension.js",
   "activationEvents": [
-    "onCommand:zumito-cli.createProject",
-    "onCommand:zumito-cli.createModule",
-    "onCommand:zumito-cli.createEmbedBuilder",
-    "onCommand:zumito-cli.createActionRowBuilder",
-    "onCommand:zumito-cli.injectService",
-    "onCommand:zumito-cli.runDev",
-    "onCommand:zumito-cli.runDebug"
+    "*"
   ],
   "contributes": {
     "commands": [
@@ -25,7 +19,7 @@
       },
       {
         "command": "zumito-cli.createModule",
-        "title": "Zumito: Create Module"
+        "title": "Zumito: Create Module (Bot)"
       },
       {
         "command": "zumito-cli.createEmbedBuilder",
@@ -46,8 +40,42 @@
       {
         "command": "zumito-cli.runDebug",
         "title": "Zumito: Run Debug"
+      },
+      {
+        "command": "zumito-cli.modules.configure",
+        "title": "Zumito: Configure Module"
+      },
+      {
+        "command": "zumito-cli.modules.install",
+        "title": "Zumito: Install Module"
+      },
+      {
+        "command": "zumito-cli.modules.uninstall",
+        "title": "Zumito: Uninstall Module"
+      },
+      {
+        "command": "zumito-cli.createCommand",
+        "title": "Zumito: Create Command"
+      },
+      {
+        "command": "zumito-cli.editTranslation",
+        "title": "Zumito: Edit translation"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "zumito-cli.createModule",
+          "when": "explorerResourceIsFolder && resourceFilename == modules",
+          "group": "zumito"
+        },
+        {
+          "command": "zumito-cli.createCommand",
+          "when": "explorerResourceIsFolder && resourceFilename == commands || !explorerResourceIsFolder && resourceDirname =~ /commands$/",
+          "group": "zumito"
+        }
+      ]
+    }
   },
   "scripts": {
     "package": "vsce package",

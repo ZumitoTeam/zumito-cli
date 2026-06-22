@@ -1,233 +1,412 @@
 const vscode = require('vscode');
 const path = require('path');
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const fs = require('fs');
+const { createWebview } = require('./modulesWebview.js');
 
-function runCLI(args) {
-    const command = `npx zumito-cli ${args}`;
-    const terminal = vscode.window.createTerminal('Zumito CLI');
-    terminal.sendText(command);
-    terminal.show();
+function getProjectRoot() {
+    return vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath || null;
 }
 
-function findServiceFiles(dir, fileList = []) {
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-        const fullPath = path.join(dir, file);
-        if (fs.statSync(fullPath).isDirectory()) {
-            findServiceFiles(fullPath, fileList);
-        } else if (fullPath.toLowerCase().includes('services') && file.endsWith('.ts')) {
-            fileList.push(fullPath);
-        }
-    }
-    return fileList;
+function cliPath() {
+    return path.join(__dirname, '..', 'bin', 'index.js');
 }
 
-async function openProjectDialog(projectDir) {
-    const openInCurrent = 'Open in current window';
-    const openInNew = 'Open in new window';
-    const choice = await vscode.window.showInformationMessage(
-        `Project created at ${projectDir}. Do you want to open it?`,
-        openInCurrent,
-        openInNew
-    );
-    if (choice === openInCurrent) {
-        const uri = vscode.Uri.file(projectDir);
-        await vscode.commands.executeCommand('vscode.openFolder', uri, false);
-    } else if (choice === openInNew) {
-        const uri = vscode.Uri.file(projectDir);
-        await vscode.commands.executeCommand('vscode.openFolder', uri, true);
+function runCliJson(args) {
+    const root = getProjectRoot();
+    if (!root) return null;
+    try {
+        const r = spawnSync('node', [cliPath(), ...args.split(' ')], { cwd: root, encoding: 'utf-8' });
+        if (r.status !== 0) return null;
+        return JSON.parse(r.stdout);
+    } catch { return null; }
+}
+
+function runCliSave(args) {
+    const root = getProjectRoot();
+    if (!root) return;
+    try {
+        spawnSync('node', [cliPath(), ...args], { cwd: root, encoding: 'utf-8' });
+    } catch {}
+}
+
+/**
+ * Open the module management WebView panel.
+ */
+async function openModulesPanel(context) {
+    const root = getProjectRoot();
+    if (!root) { vscode.window.showErrorMessage('Open a workspace first'); return; }
+    if (!fs.existsSync(path.join(root, 'zumito.config.ts'))) {
+        vscode.window.showErrorMessage('No zumito.config.ts found'); return;
     }
+    createWebview(context);
 }
 
 function activate(context) {
-    const createProject = vscode.commands.registerCommand('zumito-cli.createProject', async () => {
-        // 1. Folder picker — where to create the project
-        const folderResult = await vscode.window.showOpenDialog({
-            canSelectFolders: true,
-            canSelectFiles: false,
-            canSelectMany: false,
-            title: 'Select folder to create the project in'
-        });
-        if (!folderResult || folderResult.length === 0) { return; }
-        const targetDir = folderResult[0].fsPath;
+    console.log('[Zumito] Extension activating...');
 
-        // 2. Collect project info
-        const name = await vscode.window.showInputBox({ prompt: 'Project name' });
-        if (!name) { return; }
+    const configure = vscode.commands.registerCommand('zumito-cli.modules.configure', () => {
+        openModulesPanel(context);
+    });
 
-        const discordToken = await vscode.window.showInputBox({ prompt: 'Discord bot token' });
-        if (!discordToken) { return; }
+    const installCmd = vscode.commands.registerCommand('zumito-cli.modules.install', async () => {
+        const root = getProjectRoot();
+        if (!root) { vscode.window.showErrorMessage('Open a workspace first'); return; }
+        const configPath = path.join(root, 'zumito.config.ts');
+        if (!fs.existsSync(configPath)) { vscode.window.showErrorMessage('No zumito.config.ts found'); return; }
 
-        const discordClientId = await vscode.window.showInputBox({ prompt: 'Discord client ID' });
-        if (!discordClientId) { return; }
+        const name = await vscode.window.showInputBox({ prompt: 'Module npm package name', placeHolder: '@zumito-team/analytics-module' });
+        if (!name) return;
 
-        const discordClientSecret = await vscode.window.showInputBox({ prompt: 'Discord client secret' });
-        if (!discordClientSecret) { return; }
+        const opt = await vscode.window.showQuickPick([
+            { label: 'Add to config + npm install', value: 'install' },
+            { label: 'Add to config only', value: 'config' },
+            { label: 'Cancel', value: 'cancel' },
+        ], { placeHolder: name });
+        if (!opt || opt.value === 'cancel') return;
 
-        const botPrefix = await vscode.window.showInputBox({ prompt: 'Default prefix', value: 'zt-' });
-        if (!botPrefix) { return; }
-
-        const mongoQueryString = await vscode.window.showInputBox({ prompt: 'Mongo query string' });
-
-        // 3. Run the CLI synchronously to know when it's done
-        const projectDir = path.join(targetDir, name);
-        const args = [
-            `create project`,
-            `--projectName "${name}"`,
-            `--discordToken "${discordToken}"`,
-            `--discordClientId "${discordClientId}"`,
-            `--discordClientSecret "${discordClientSecret}"`,
-            `--botPrefix "${botPrefix}"`,
-        ];
-        if (mongoQueryString) {
-            args.push(`--mongoQueryString "${mongoQueryString}"`);
+        runCliSave(['module', 'set-config', '--name', name, '--config', '{}']);
+        if (opt.value === 'install') {
+            const t = vscode.window.createTerminal({ name: 'Zumito' });
+            t.sendText(`npm install ${name}`);
+            t.show();
         }
+        vscode.window.showInformationMessage(`Module ${name} added`);
+    });
+
+    const uninstallCmd = vscode.commands.registerCommand('zumito-cli.modules.uninstall', async () => {
+        const root = getProjectRoot();
+        if (!root) return;
+        const modules = runCliJson('module list --json');
+        if (!modules || modules.length === 0) { vscode.window.showInformationMessage('No modules to remove'); return; }
+
+        const pick = await vscode.window.showQuickPick(modules.map(m => m.name), { placeHolder: 'Select module to remove' });
+        if (!pick) return;
+
+        const ok = await vscode.window.showWarningMessage(`Remove ${pick} from config?`, { modal: true }, 'Remove');
+        if (ok !== 'Remove') return;
+
+        runCliSave(['module', 'remove', '--name', pick]);
+        vscode.window.showInformationMessage(`Module ${pick} removed`);
+
+        const un = await vscode.window.showInformationMessage(`npm uninstall ${pick}?`, 'Yes', 'No');
+        if (un === 'Yes') {
+            const t = vscode.window.createTerminal({ name: 'Zumito' });
+            t.sendText(`npm uninstall ${pick}`);
+            t.show();
+        }
+    });
+
+    const createProject = vscode.commands.registerCommand('zumito-cli.createProject', async () => {
+        const folder = await vscode.window.showOpenDialog({ canSelectFolders: true, title: 'Select folder' });
+        if (!folder) return;
+        const targetDir = folder[0].fsPath;
+
+        const name = await vscode.window.showInputBox({ prompt: 'Project name' });
+        if (!name) return;
+        const token = await vscode.window.showInputBox({ prompt: 'Discord bot token' });
+        if (!token) return;
+        const cid = await vscode.window.showInputBox({ prompt: 'Discord client ID' });
+        if (!cid) return;
+        const cs = await vscode.window.showInputBox({ prompt: 'Discord client secret' });
+        if (!cs) return;
+        const prefix = await vscode.window.showInputBox({ prompt: 'Default prefix', value: 'zt-' });
+        if (!prefix) return;
+        const mongo = await vscode.window.showInputBox({ prompt: 'Mongo query string' });
+
+        const args = [
+            'create project',
+            `--projectName`, name,
+            `--discordToken`, token,
+            `--discordClientId`, cid,
+            `--discordClientSecret`, cs,
+            `--botPrefix`, prefix,
+        ];
+        if (mongo) args.push('--mongoQueryString', mongo);
 
         await vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Notification, title: 'Creating Zumito project...', cancellable: false },
+            { location: vscode.ProgressLocation.Notification, title: 'Creating project...' },
             async () => {
-                try {
-                    execSync(`npx zumito-cli ${args.join(' ')}`, {
-                        cwd: targetDir,
-                        stdio: 'inherit'
-                    });
-                } catch (error) {
-                    vscode.window.showErrorMessage('Failed to create Zumito project');
-                    return;
-                }
+                const r = spawnSync('node', [cliPath(), ...args], { cwd: targetDir, encoding: 'utf-8', stdio: 'inherit' });
+                if (r.status !== 0) { vscode.window.showErrorMessage('Failed'); return; }
+                const pd = path.join(targetDir, name);
+                const o = await vscode.window.showInformationMessage(`Project created at ${pd}`, 'Open');
+                if (o) await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(pd));
             }
         );
-
-        // 4. Ask to open the project
-        await openProjectDialog(projectDir);
     });
 
-    const createModule = vscode.commands.registerCommand('zumito-cli.createModule', async () => {
-        const moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
-        if (!moduleName) { return; }
+    context.subscriptions.push(createProject, configure, installCmd, uninstallCmd);
 
-        const moduleType = await vscode.window.showQuickPick(['common', 'custom_behavior'], { placeHolder: 'Module type' });
-        if (!moduleType) { return; }
+    // Keep the old commands working but with native dialogs
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zumito-cli.createModule', async () => {
+            var name = await vscode.window.showInputBox({ prompt: 'Module name' });
+            if (!name) return;
+            var type = await vscode.window.showQuickPick(['common', 'custom_behavior'], { placeHolder: 'Module type' });
+            if (!type) return;
+            var t = vscode.window.createTerminal({ name: 'Zumito CLI' });
+            t.sendText('node "' + cliPath() + '" create module --name "' + name + '" --type "' + type + '"');
+            t.show();
+        }),
+        vscode.commands.registerCommand('zumito-cli.createEmbedBuilder', () => {
+            vscode.window.showInformationMessage('Use terminal: npx zumito-cli create embedBuilder');
+        }),
+        vscode.commands.registerCommand('zumito-cli.createActionRowBuilder', () => {
+            vscode.window.showInformationMessage('Use terminal: npx zumito-cli create actionRowBuilder');
+        }),
+        vscode.commands.registerCommand('zumito-cli.injectService', () => {
+            vscode.window.showInformationMessage('Use terminal: npx zumito-cli add injectService');
+        }),
+        vscode.commands.registerCommand('zumito-cli.runDev', () => {
+            const t = vscode.window.createTerminal({ name: 'Zumito Dev' });
+            t.sendText('npm run dev');
+            t.show();
+        }),
+        vscode.commands.registerCommand('zumito-cli.runDebug', () => {
+            vscode.commands.executeCommand('workbench.action.debug.start');
+        }),
+        vscode.commands.registerCommand('zumito-cli.createCommand', async (uri) => {
+            // Derive module name from the selected folder path
+            var moduleName = '';
+            if (uri && uri.fsPath) {
+                var p = uri.fsPath;
+                var stat = require('fs').statSync(p);
+                if (stat.isFile()) p = path.dirname(p);
+                // Walk up to find the module folder (parent of commands/)
+                var parts = p.split(path.sep);
+                var idx = parts.indexOf('commands');
+                if (idx > 0) moduleName = parts[idx - 1];
+                else {
+                    // Try parent dir name
+                    moduleName = path.basename(path.dirname(p));
+                }
+            }
+            if (!moduleName) {
+                moduleName = await vscode.window.showInputBox({ prompt: 'Module name', placeHolder: 'myModule' });
+                if (!moduleName) return;
+            }
+            var name = await vscode.window.showInputBox({ prompt: 'Command name', placeHolder: 'ping' });
+            if (!name) return;
+            var type = await vscode.window.showQuickPick(['prefix', 'slash', 'any'], { placeHolder: 'Command type' });
+            if (!type) return;
+            var t = vscode.window.createTerminal({ name: 'Zumito CLI' });
+            t.sendText('node "' + cliPath() + '" create command --moduleName "' + moduleName + '" --name "' + name + '" --type "' + type + '"');
+            t.show();
+        }),
+    );
 
-        runCLI(`create module --name "${moduleName}" --type "${moduleType}"`);
-    });
+    // Inline translation hints — shows translation value after trans('key')
+    try {
+        var transDecorationType = vscode.window.createTextEditorDecorationType({});
 
-    const listModules = (workspaceFolder) => {
-        const modulesPath = path.join(workspaceFolder, 'src', 'modules');
-        if (!fs.existsSync(modulesPath)) return [];
-        return fs.readdirSync(modulesPath).filter(f => {
-            return fs.statSync(path.join(modulesPath, f)).isDirectory();
-        });
-    };
+        function updateTransDecorations(editor) {
+            if (!editor || editor.document.uri.scheme !== 'file') return;
+            var doc = editor.document;
+            // Derive root from document path or workspace
+            var root = getProjectRoot();
+            if (!root) {
+                var p = doc.uri.fsPath;
+                var idx = p.indexOf(path.sep + 'src' + path.sep);
+                if (idx > 0) root = p.substring(0, idx);
+            }
+            if (!root) return;
+            var decorations = [];
 
-    const createEmbedBuilder = vscode.commands.registerCommand('zumito-cli.createEmbedBuilder', async () => {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-        let moduleName;
-        if (workspaceFolder) {
-            const modules = listModules(workspaceFolder);
-            if (modules.length > 0) {
-                moduleName = await vscode.window.showQuickPick(modules, { placeHolder: 'Module name' });
+            // Load translations
+            var trans = {};
+            var modsDir = path.join(root, 'src', 'modules');
+            if (fs.existsSync(modsDir)) {
+                var mods = fs.readdirSync(modsDir);
+                for (var m = 0; m < mods.length; m++) {
+                    var td = path.join(modsDir, mods[m], 'translations');
+                    if (fs.existsSync(td)) loadTransDir(td, td, trans);
+                }
+            }
+            function loadTransDir(bd, cd, r) {
+                var es; try { es = fs.readdirSync(cd); } catch(e) { return; }
+                for (var i = 0; i < es.length; i++) {
+                    var f = path.join(cd, es[i]);
+                    var s; try { s = fs.statSync(f); } catch(e) { continue; }
+                    if (s.isDirectory()) { loadTransDir(bd, f, r); }
+                    else if (es[i].endsWith('.json')) {
+                        var rel = path.relative(bd, path.dirname(f));
+                        var pfx = rel ? rel.split(path.sep).join('.') : '';
+                        var lang = es[i].replace('.json', '');
+                        try { var d = JSON.parse(fs.readFileSync(f, 'utf-8')); flat(d, pfx, r, lang); } catch(e) {}
+                    }
+                }
+            }
+            function flat(d, pfx, r, lang) {
+                for (var k in d) {
+                    var key = pfx ? pfx + '.' + k : k;
+                    if (typeof d[k] === 'object' && !Array.isArray(d[k])) { flat(d[k], key, r, lang); }
+                    else if (typeof d[k] === 'string') { if (!r[key]) r[key] = {}; r[key][lang] = d[k]; }
+                }
+            }
+
+            // Scan document for trans('key') patterns
+            var text = doc.getText();
+            var re = /trans\s*\(\s*['"]([^'"]+)['"]/g;
+            var m;
+            while ((m = re.exec(text)) !== null) {
+                var key = m[1];
+                var parts = doc.uri.fsPath.split(path.sep);
+                var cIdx = parts.lastIndexOf('commands');
+                var fk;
+                if (key.startsWith('$')) fk = key.slice(1);
+                else if (cIdx > 0) {
+                    var cn = path.basename(doc.uri.fsPath, '.ts');
+                    fk = 'command.' + cn + '.' + key;
+                    var mn = parts[cIdx - 1];
+                    var mk = 'command.' + mn + '.' + key;
+                    if (!trans[fk] && trans[mk]) fk = mk;
+                } else fk = key;
+
+                if (trans[fk]) {
+                    var enVal = trans[fk]['en'] || trans[fk][Object.keys(trans[fk])[0]] || '';
+                    if (enVal) {
+                        // Place decoration at end of line
+                        var lineEnd = doc.lineAt(doc.positionAt(m.index).line).range.end;
+                        decorations.push({
+                            range: new vscode.Range(lineEnd, lineEnd),
+                            renderOptions: {
+                                after: {
+                                    contentText: '// ' + enVal,
+                                    color: new vscode.ThemeColor('textLink.foreground'),
+                                    fontSize: '11px',
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            if (decorations.length) {
+                editor.setDecorations(transDecorationType, decorations);
             }
         }
-        if (!moduleName) {
-            moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
+
+        context.subscriptions.push(
+            transDecorationType,
+            vscode.window.onDidChangeActiveTextEditor(function(e) { if (e) updateTransDecorations(e); }),
+            vscode.workspace.onDidChangeTextDocument(function(e) {
+                var editor = vscode.window.activeTextEditor;
+                if (editor && e.document === editor.document) updateTransDecorations(editor);
+            })
+        );
+        setTimeout(function() {
+            if (vscode.window.activeTextEditor) updateTransDecorations(vscode.window.activeTextEditor);
+        }, 1000);
+    } catch(e) {
+        console.error('[Zumito] Decoration error:', e.message);
+    }
+
+    // "Edit translation" command — opens the translation JSON file at the correct line
+    try {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('zumito-cli.editTranslation', function() {
+                var editor = vscode.window.activeTextEditor;
+                if (!editor || editor.document.uri.scheme !== 'file') return;
+                var root = getProjectRoot();
+                if (!root) {
+                    var p = editor.document.uri.fsPath;
+                    var idx = p.indexOf(path.sep + 'src' + path.sep);
+                    if (idx > 0) root = p.substring(0, idx);
+                }
+                if (!root) return;
+                var doc = editor.document;
+                var pos = editor.selection.active;
+                var line = doc.lineAt(pos.line).text;
+                var match = line.match(/trans\s*\(\s*['"]([^'"]+)['"]/);
+                if (!match) {
+                    vscode.window.showInformationMessage('No trans() call on this line.');
+                    return;
+                }
+                var key = match[1];
+                var parts = doc.uri.fsPath.split(path.sep);
+                var cIdx = parts.lastIndexOf('commands');
+                if (cIdx < 0) {
+                    vscode.window.showInformationMessage('Not inside a commands folder.');
+                    return;
+                }
+                var moduleName = parts[cIdx - 1];
+                var cmdName = path.basename(doc.uri.fsPath, '.ts');
+
+                var transDir = path.join(root, 'src', 'modules', moduleName, 'translations');
+                if (!fs.existsSync(transDir)) {
+                    vscode.window.showInformationMessage('No translations folder found for this module.');
+                    return;
+                }
+
+                // Find all JSON files and search for the key
+                var files = findTranslationFiles(transDir);
+                var targetFile = null;
+                var targetLine = 0;
+
+                for (var i = 0; i < files.length; i++) {
+                    try {
+                        var content = fs.readFileSync(files[i], 'utf-8');
+                        var lines = content.split('\n');
+                        // Search for the key in the file content: "key": or "key" :
+                        var keyPattern = new RegExp('"' + key + '"\\s*:');
+                        for (var l = 0; l < lines.length; l++) {
+                            if (keyPattern.test(lines[l])) {
+                                targetFile = files[i];
+                                targetLine = l; // 0-based
+                                break;
+                            }
+                        }
+                        if (targetFile) break;
+                    } catch(e) {}
+                }
+
+                if (targetFile) {
+                    // Open file and navigate to the line
+                    var uri = vscode.Uri.file(targetFile);
+                    vscode.workspace.openTextDocument(uri).then(function(doc) {
+                        vscode.window.showTextDocument(doc, {
+                            selection: new vscode.Range(targetLine, 0, targetLine, 0)
+                        });
+                    });
+                } else {
+                    vscode.window.showInformationMessage('Could not find the key in any translation file.');
+                }
+            })
+        );
+
+        // CodeActionProvider — shows lightbulb on lines with trans('key')
+        context.subscriptions.push(
+            vscode.languages.registerCodeActionsProvider('typescript', {
+                provideCodeActions: function(doc, range) {
+                    var line = doc.lineAt(range.start.line).text;
+                    if (!/trans\s*\(\s*['"][^'"]+['"]/.test(line)) return [];
+                    var action = new vscode.CodeAction('Edit translation', vscode.CodeActionKind.QuickFix);
+                    action.command = { command: 'zumito-cli.editTranslation', title: 'Edit translation' };
+                    return [action];
+                }
+            }, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] })
+        );
+
+        function findTranslationFiles(dir) {
+            var result = [];
+            try {
+                var entries = fs.readdirSync(dir);
+                for (var i = 0; i < entries.length; i++) {
+                    var full = path.join(dir, entries[i]);
+                    var stat = fs.statSync(full);
+                    if (stat.isDirectory()) result = result.concat(findTranslationFiles(full));
+                    else if (entries[i].endsWith('.json')) result.push(full);
+                }
+            } catch(e) {}
+            return result;
         }
-        if (!moduleName) { return; }
+    } catch(e) {
+        console.error('[Zumito] Edit translation error:', e.message);
+    }
 
-        const serviceName = await vscode.window.showInputBox({ prompt: 'Service name' });
-        if (!serviceName) { return; }
-
-        runCLI(`create embedBuilder --moduleName "${moduleName}" --name "${serviceName}"`);
-    });
-
-    const createActionRowBuilder = vscode.commands.registerCommand('zumito-cli.createActionRowBuilder', async () => {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-        let moduleName;
-        if (workspaceFolder) {
-            const modules = listModules(workspaceFolder);
-            if (modules.length > 0) {
-                moduleName = await vscode.window.showQuickPick(modules, { placeHolder: 'Module name' });
-            }
-        }
-        if (!moduleName) {
-            moduleName = await vscode.window.showInputBox({ prompt: 'Module name' });
-        }
-        if (!moduleName) { return; }
-
-        const serviceName = await vscode.window.showInputBox({ prompt: 'Service name' });
-        if (!serviceName) { return; }
-
-        runCLI(`create actionRowBuilder --moduleName "${moduleName}" --name "${serviceName}"`);
-    });
-
-    const injectServiceCmd = vscode.commands.registerCommand('zumito-cli.injectService', async () => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage('No active editor found. Please open a TypeScript file.');
-            return;
-        }
-
-        if (editor.document.isDirty) {
-            const save = await vscode.window.showWarningMessage(
-                'The file has unsaved changes. Do you want to save it before proceeding?',
-                { modal: true },
-                'Save'
-            );
-            if (save !== 'Save') {
-                vscode.window.showErrorMessage('Operation cancelled because the file was not saved.');
-                return;
-            }
-            await editor.document.save();
-        }
-
-        const file = editor.document.fileName;
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-        if (!workspaceFolder) {
-            vscode.window.showErrorMessage('No workspace folder found.');
-            return;
-        }
-
-        let services = [];
-        try {
-            services = findServiceFiles(workspaceFolder).map(fullPath => {
-                const filename = path.basename(fullPath, '.ts');
-                return `${fullPath}:${filename}`;
-            });
-        } catch (e) {
-            vscode.window.showErrorMessage('Failed to list services');
-            return;
-        }
-
-        const pick = await vscode.window.showQuickPick(services.map(s => {
-            const [p, f] = s.split(':');
-            return { label: f, description: p };
-        }), { placeHolder: 'Select service to inject' });
-        if (!pick) { return; }
-
-        const className = path.basename(pick.description, '.ts');
-        const relativePath = path.relative(path.dirname(file), pick.description).replace(/\\/g,'/').replace(/\.ts$/, '');
-        const defaultName = className.charAt(0).toLowerCase() + className.slice(1);
-        const propertyName = await vscode.window.showInputBox({ prompt: 'Property name', value: defaultName });
-        if (!propertyName) { return; }
-
-        runCLI(`add injectService --file "${file}" --servicePath "${relativePath}" --serviceClass "${className}" --propertyName "${propertyName}"`);
-    });
-
-    context.subscriptions.push(createProject, createModule, createEmbedBuilder, createActionRowBuilder, injectServiceCmd);
-
-    const runDev = vscode.commands.registerCommand('zumito-cli.runDev', () => {
-        const terminal = vscode.window.createTerminal({ name: 'Zumito Dev' });
-        terminal.sendText('npm run dev');
-        terminal.show();
-    });
-
-    const runDebug = vscode.commands.registerCommand('zumito-cli.runDebug', () => {
-        vscode.commands.executeCommand('workbench.action.debug.start');
-    });
-
-    context.subscriptions.push(runDev, runDebug);
+    console.log('[Zumito] Extension activated');
 }
 
 function deactivate() {}
 
+module.exports = { activate, deactivate };

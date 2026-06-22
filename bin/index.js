@@ -16,6 +16,10 @@ import {embedBuilder} from '../lib/commands/create/embedBuilder.js';
 import {actionRowBuilder} from '../lib/commands/create/actionRowBuilder.js';
 import {injectService} from '../lib/commands/add/injectService.js';
 import { installModule } from '../lib/commands/install/module.js';
+import { moduleList } from '../lib/commands/module/list.js';
+import { moduleRemove } from '../lib/commands/module/remove.js';
+import { moduleConfig } from '../lib/commands/module/config.js';
+import { moduleSetConfig } from '../lib/commands/module/setConfig.js';
 import { easybot } from '../lib/commands/easybot.js';
 
 
@@ -158,6 +162,38 @@ easybotCommand.action(async (params) => {
         }
     }
     await easybot.action(params);
+});
+
+// Module management group (external modules in zumito.config.ts)
+const moduleGroup = program
+    .command('module')
+    .description('Manage external modules in zumito.config.ts');
+
+const moduleCommands = [moduleList, moduleRemove, moduleConfig, moduleSetConfig];
+
+moduleCommands.forEach(command => {
+    const cmd = moduleGroup.command(command.command);
+    cmd.description(command.description);
+    command.options.forEach(option => {
+        cmd.option(`--${option.key} <${option.key}>`, option.label);
+    });
+    if (command.jsonOption) {
+        cmd.option('--json', 'Output as JSON');
+    }
+    cmd.action(async (params) => {
+        for (const option of command.options) {
+            if (option.manualParse) continue;
+            while (!params[option.key]) {
+                params[option.key] = await inquirer.prompt({
+                    type: option.type,
+                    name: option.key,
+                    message: `${option.label}:`,
+                    choices: option.choices,
+                }).then(a => a[option.key]);
+            }
+        }
+        await command.action(params);
+    });
 });
 
 program.parse();
