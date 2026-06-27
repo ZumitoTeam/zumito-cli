@@ -3,22 +3,32 @@ var path = require('path');
 var fs = require('fs');
 var cp = require('child_process');
 
-function cliPath() { return path.join(__dirname, '..', 'bin', 'index.js'); }
+function cliPath() {
+  var localPath = path.join(__dirname, '..', 'bin', 'index.js');
+  if (fs.existsSync(localPath)) return localPath;
+  return 'npx zumito-cli';
+}
 function getRoot() { return vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath || null; }
 
-function runJson(args) {
+function runCmd(args) {
   var root = getRoot();
-  if (!root) return null;
+  if (!root) return { status: 1 };
+  var cli = cliPath();
+  if (cli === 'npx zumito-cli') {
+    return cp.spawnSync('npx', ['zumito-cli', ...args], { cwd: root, encoding: 'utf-8' });
+  }
+  return cp.spawnSync('node', [cli, ...args], { cwd: root, encoding: 'utf-8' });
+}
+
+function runJson(args) {
   try {
-    var r = cp.spawnSync('node', [cliPath()].concat(args.split(' ')), { cwd: root, encoding: 'utf-8' });
+    var r = runCmd(typeof args === 'string' ? args.split(' ') : args);
     return r.status === 0 ? JSON.parse(r.stdout) : null;
   } catch(e) { return null; }
 }
 
 function runSave(args) {
-  var root = getRoot();
-  if (!root) return;
-  try { cp.spawnSync('node', [cliPath()].concat(args), { cwd: root, encoding: 'utf-8' }); } catch(e) {}
+  try { runCmd(typeof args === 'string' ? args.split(' ') : args); } catch(e) {}
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

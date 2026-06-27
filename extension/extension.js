@@ -12,24 +12,32 @@ function getProjectRoot() {
 }
 
 function cliPath() {
-    return path.join(__dirname, '..', 'bin', 'index.js');
+    const localPath = path.join(__dirname, '..', 'bin', 'index.js');
+    if (fs.existsSync(localPath)) return localPath;
+    return 'npx zumito-cli';
+}
+
+function runCliCmd(args) {
+    const root = getProjectRoot();
+    if (!root) return { status: 1 };
+    const cli = cliPath();
+    if (cli === 'npx zumito-cli') {
+        return spawnSync('npx', ['zumito-cli', ...args], { cwd: root, encoding: 'utf-8' });
+    }
+    return spawnSync('node', [cli, ...args], { cwd: root, encoding: 'utf-8' });
 }
 
 function runCliJson(args) {
-    const root = getProjectRoot();
-    if (!root) return null;
     try {
-        const r = spawnSync('node', [cliPath(), ...args.split(' ')], { cwd: root, encoding: 'utf-8' });
-        if (r.status !== 0) return null;
+        const r = runCliCmd(typeof args === 'string' ? args.split(' ') : args);
+        if (!r || r.status !== 0) return null;
         return JSON.parse(r.stdout);
     } catch { return null; }
 }
 
 function runCliSave(args) {
-    const root = getProjectRoot();
-    if (!root) return;
     try {
-        spawnSync('node', [cliPath(), ...args], { cwd: root, encoding: 'utf-8' });
+        runCliCmd(typeof args === 'string' ? args.split(' ') : args);
     } catch {}
 }
 
@@ -130,7 +138,11 @@ function activate(context) {
         await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: 'Creating project...' },
             async () => {
-                const r = spawnSync('node', [cliPath(), ...args], { cwd: targetDir, encoding: 'utf-8', stdio: 'inherit' });
+                const cli = cliPath();
+                const isNpx = cli === 'npx zumito-cli';
+                const cmd = isNpx ? 'npx' : 'node';
+                const cmdArgs = isNpx ? ['zumito-cli', ...args] : [cli, ...args];
+                const r = spawnSync(cmd, cmdArgs, { cwd: targetDir, encoding: 'utf-8', stdio: 'inherit' });
                 if (r.status !== 0) { vscode.window.showErrorMessage('Failed'); return; }
                 const pd = path.join(targetDir, name);
                 const o = await vscode.window.showInformationMessage(`Project created at ${pd}`, 'Open');
@@ -149,7 +161,7 @@ function activate(context) {
             var type = await vscode.window.showQuickPick(['common', 'custom_behavior'], { placeHolder: 'Module type' });
             if (!type) return;
             var t = vscode.window.createTerminal({ name: 'Zumito CLI' });
-            t.sendText('node "' + cliPath() + '" create module --name "' + name + '" --type "' + type + '"');
+            t.sendText('npx zumito-cli create module --name "' + name + '" --type "' + type + '"');
             t.show();
         }),
         vscode.commands.registerCommand('zumito-cli.createEmbedBuilder', () => {
@@ -194,7 +206,7 @@ function activate(context) {
             var type = await vscode.window.showQuickPick(['prefix', 'slash', 'any'], { placeHolder: 'Command type' });
             if (!type) return;
             var t = vscode.window.createTerminal({ name: 'Zumito CLI' });
-            t.sendText('node "' + cliPath() + '" create command --moduleName "' + moduleName + '" --name "' + name + '" --type "' + type + '"');
+            t.sendText('npx zumito-cli create command --moduleName "' + moduleName + '" --name "' + name + '" --type "' + type + '"');
             t.show();
         }),
     );
