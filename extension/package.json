@@ -60,6 +60,26 @@
       {
         "command": "zumito-cli.editTranslation",
         "title": "Zumito: Edit translation"
+      },
+      {
+        "command":         "zumito-cli.editEmbed",
+        "title": "Zumito: Edit embed visually"
+      },
+      {
+        "command": "zumito-cli.discordPortal",
+        "title": "Zumito: Discord Developer Portal"
+      },
+      {
+        "command": "zumito-cli.editConfig",
+        "title": "Zumito: Edit Config Visually",
+        "icon": "$(settings-gear)"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "zumito-file-icons",
+        "label": "Zumito File Icons",
+        "path": "./fileicons/zumito-icon-theme.json"
       }
     ],
     "menus": {
@@ -73,6 +93,14 @@
           "command": "zumito-cli.createCommand",
           "when": "explorerResourceIsFolder && resourceFilename == commands || !explorerResourceIsFolder && resourceDirname =~ /commands$/",
           "group": "zumito"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "zumito-cli.editConfig",
+          "when": "resourceFilename == zumito.config.ts",
+          "group": "navigation@1",
+          "icon": "codicon codicon-settings-gear"
         }
       ]
     }

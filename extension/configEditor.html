@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+:root {
+    --bg: var(--vscode-editor-background, #1e1e1e);
+    --fg: var(--vscode-foreground, #e0e0e0);
+    --border: var(--vscode-panel-border, #333);
+    --input-bg: var(--vscode-input-background, #3c3c3c);
+    --input-fg: var(--vscode-input-foreground, #e0e0e0);
+    --input-border: var(--vscode-input-border, #555);
+    --btn-bg: #e11d48;
+    --btn-fg: #fff;
+    --accent: #e11d48;
+    --desc: var(--vscode-descriptionForeground, #888);
+    --hover: var(--vscode-list-hoverBackground, #2a2d2e);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--vscode-font-family, sans-serif); font-size: 13px; padding: 20px; max-width: 650px; margin: 0 auto; }
+h2 { font-size: 14px; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+h2 .arrow { transition: transform .15s; font-size: 10px; }
+h2.collapsed .arrow { transform: rotate(-90deg); }
+.section.collapsed .section-body { display: none; }
+.field { margin-bottom: 10px; }
+.field-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.field-header label { font-size: 11px; font-weight: 600; color: var(--desc); }
+.info-btn { background: none; border: 1px solid var(--border); border-radius: 50%; width: 16px; height: 16px; font-size: 9px; color: var(--desc); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.info-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tooltip { font-size: 10px; color: var(--desc); background: var(--input-bg); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; margin-bottom: 4px; display: none; line-height: 1.4; }
+.tooltip.show { display: block; }
+input, select, textarea { 
+    background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--input-border);
+    border-radius: 4px; padding: 6px 8px; font-size: 12px; width: 100%; outline: none;
+}
+input:focus, select:focus { border-color: var(--accent); }
+.inline { display: flex; gap: 12px; }
+.inline .field { flex: 1; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; }
+.checkbox-row input[type=checkbox] { width: auto; }
+.btn {
+    background: var(--btn-bg); color: var(--btn-fg); border: none; border-radius: 4px;
+    padding: 6px 14px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+}
+.btn:hover { opacity: .85; }
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+.btn-secondary:hover { border-color: var(--accent); }
+.driver-config { margin-left: 16px; padding: 8px 0; }
+.module-section { padding: 8px 0; }
+.module-section p { font-size: 11px; color: var(--desc); margin-bottom: 8px; }
+.module-count { font-size: 10px; color: var(--desc); margin-left: 6px; }
+
+.actions { margin-top: 24px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 16px; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 12px; opacity: 0; transition: opacity .3s; z-index: 999; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const vscode = acquireVsCodeApi();
+let state = {};
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show';
+    setTimeout(() => t.className = 'toast', 2000);
+}
+
+window.addEventListener('message', function(e) {
+    const msg = e.data;
+    if (msg.type === 'init') { state = msg.config; render(); }
+    else if (msg.type === 'toast') { showToast(msg.text); }
+});
+
+function save() { vscode.postMessage({ type: 'save', config: state }); }
+
+const collapsed = {};
+function toggleSection(k) { collapsed[k] = !collapsed[k]; render(); }
+function sectionHeader(k, title) {
+    return '<h2 class="' + (collapsed[k] ? 'collapsed' : '') + '" onclick="toggleSection(\'' + k + '\')"><span class="arrow">&#9660;</span>' + title + '</h2>';
+}
+function tooltip(id, help) { 
+    return '<span class="info-btn" onclick="toggleTooltip(\'' + id + '\');event.stopPropagation()">i</span><div id="' + id + '" class="tooltip">' + (help || '') + '</div>'; 
+}
+function toggleTooltip(id) { var t = document.getElementById(id); t.classList.toggle('show'); }
+
+function g(path) {
+    var parts = path.split('.'), obj = state;
+    for (var i = 0; i < parts.length; i++) { if (obj === undefined || obj === null) return undefined; obj = obj[parts[i]]; }
+    return obj;
+}
+function s(path, value) {
+    var parts = path.split('.'), obj = state;
+    for (var i = 0; i < parts.length - 1; i++) { if (obj[parts[i]] === undefined) obj[parts[i]] = {}; obj = obj[parts[i]]; }
+    obj[parts[parts.length - 1]] = value;
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function fieldHtml(type, label, path, help, placeholder, options) {
+    var val = g(path);
+    var h = '<div class="field"><div class="field-header"><label>' + label + '</label>' + tooltip(path, help) + '</div>';
+    if (type === 'number') {
+        h += '<input type="number" value="' + (val !== undefined ? val : '') + '" placeholder="' + (placeholder||'') + '" onchange="s(\'' + path + '\', this.value ? Number(this.value) : undefined)" />';
+    } else if (type === 'bool') {
+        h += '<div class="checkbox-row"><input type="checkbox" ' + (val ? 'checked' : '') + ' onchange="s(\'' + path + '\', this.checked)" /><span>' + (placeholder||label) + '</span></div>';
+    } else if (type === 'select') {
+        h += '<select onchange="s(\'' + path + '\', this.value)">';
+        for (var i = 0; i < options.length; i++) { h += '<option value="' + options[i] + '" ' + (val === options[i] ? 'selected' : '') + '>' + options[i] + '</option>'; }
+        h += '</select>';
+    } else {
+        h += '<input type="text" value="' + esc(val || '') + '" placeholder="' + (placeholder||'') + '" onchange="s(\'' + path + '\', this.value)" />';
+    }
+    h += '</div>';
+    return h;
+}
+
+function render() {
+    var gs = state.general || {};
+    var db = state.database || { default: 'memory', drivers: {} };
+    var ws = state.webServer || {};
+    var mods = state.modules || [];
+    var h = '';
+
+    // Database
+    h += sectionHeader('database', 'Database');
+    h += '<div class="section ' + (collapsed.database ? 'collapsed' : '') + '"><div class="section-body">';
+    h += fieldHtml('select', 'Driver', 'database.default', 'Select which database engine to use. <b>memory</b> is volatile (dev only). <b>tingo</b> uses local files. <b>sqlite</b> uses a single file DB. <b>mongo</b> connects to MongoDB.', '', ['memory', 'tingo', 'sqlite', 'mongo']);
+    h += '<div class="driver-config">';
+    if (db.default === 'tingo') {
+        h += fieldHtml('text', 'Data Path', 'database.drivers.tingo.path', 'Directory where TingoDB stores data files. Relative to project root.', './db/tingodb');
+    } else if (db.default === 'sqlite') {
+        h += fieldHtml('text', 'Filename', 'database.drivers.sqlite.filename', 'SQLite database file path. Relative to project root.', './db/bot.db');
+    } else if (db.default === 'mongo') {
+        h += fieldHtml('text', 'URI', 'database.drivers.mongo.uri', 'MongoDB connection string.', 'mongodb://localhost:27017');
+        h += fieldHtml('text', 'Database Name', 'database.drivers.mongo.database', 'Name of the database within MongoDB.', 'zumito');
+    }
+    h += '</div></div></div>';
+
+    // Modules
+    h += sectionHeader('modules', 'Modules<span class="module-count">(' + mods.length + ' installed)</span>');
+    h += '<div class="section ' + (collapsed.modules ? 'collapsed' : '') + '"><div class="section-body">';
+    h += '<div class="module-section">';
+    h += '<p>Modules extend your bot with features. Use the <b>Manage Modules</b> panel to install, configure, or remove modules.</p>';
+    h += '<button class="btn btn-secondary" onclick="openModuleManager()">&#128736; Manage Modules</button>';
+    h += '</div>';
+    h += '</div></div>';
+
+    // General
+    h += sectionHeader('general', 'General Settings');
+    h += '<div class="section ' + (collapsed.general ? 'collapsed' : '') + '"><div class="section-body">';
+    h += '<div class="inline">';
+    h += fieldHtml('number', 'Log Level', 'general.logLevel', '0=none, 1=error, 2=warn, 3=info, 4=debug', '3');
+    h += fieldHtml('text', 'Command Prefix', 'general.defaultPrefix', 'Default prefix for text commands (e.g. "z-"). Can be overridden per-guild.', 'z-');
+    h += '</div><div class="inline">';
+    h += fieldHtml('bool', 'Debug Mode', 'general.debug', 'Enables verbose logging and extra debug information.');
+    h += fieldHtml('select', 'Source Mode', 'general.srcMode', 'monoBundle = one build output. multiBundle = separate bundles per module.', '', ['(default)', 'monoBundle', 'multiBundle']);
+    h += '</div></div></div>';
+
+    // Web Server
+    h += sectionHeader('webserver', 'Web Server');
+    h += '<div class="section ' + (collapsed.webserver ? 'collapsed' : '') + '"><div class="section-body">';
+    h += '<div class="inline">';
+    h += fieldHtml('number', 'Port', 'webServer.port', 'Port for the built-in Express.js web server.', '3000');
+    h += fieldHtml('bool', 'Disable 404 Handler', 'webServer.disableNotFoundHandler', 'If checked, the default 404 JSON response is disabled and routes handle it themselves.');
+    h += '</div></div></div>';
+
+    // Status
+    var so = state.statusOptions;
+    if (so) {
+        h += sectionHeader('status', 'Bot Presence');
+        h += '<div class="section ' + (collapsed.status ? 'collapsed' : '') + '"><div class="section-body">';
+        h += '<p style="font-size:11px;color:var(--desc);margin-bottom:8px">Presence status is managed in <code>src/config/StatusOptions.ts</code>. Open that file to edit statuses.</p>';
+        h += '<div class="inline">';
+        h += fieldHtml('number', 'Update Interval (s)', 'statusOptions.updateInterval', 'How often the presence status rotates (seconds).', '30');
+        h += fieldHtml('select', 'Order', 'statusOptions.order', 'Random = random order each rotation. Sequential = in array order.', '', ['sequential', 'random']);
+        h += '</div></div></div>';
+    }
+
+    // Actions
+    h += '<div class="actions">';
+    h += '<button class="btn" onclick="save()">&#128190; Save Changes</button>';
+    h += '</div>';
+
+    document.getElementById('app').innerHTML = h;
+}
+
+function openModuleManager() {
+    vscode.postMessage({ type: 'openModules' });
+}
+
+// Re-render when fields might change driver config visibility
+document.addEventListener('change', function(e) {
+    if (e.target.tagName === 'SELECT') setTimeout(function() { render(); }, 50);
+});
+
+render();
+</script>
+</body>
+</html>

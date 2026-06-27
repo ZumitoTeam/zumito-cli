@@ -3,6 +3,9 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const { createWebview } = require('./modulesWebview.js');
+const { openEmbedEditor } = require('./embedEditor.js');
+const { parseConfig } = require('./configParser.js');
+const { generateConfig } = require('./configGenerator.js');
 
 function getProjectRoot() {
     return vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath || null;
@@ -49,13 +52,13 @@ function activate(context) {
         openModulesPanel(context);
     });
 
-    const installCmd = vscode.commands.registerCommand('zumito-cli.modules.install', async () => {
+    const installCmd = vscode.commands.registerCommand('zumito-cli.modules.install', async (prefilledName) => {
         const root = getProjectRoot();
         if (!root) { vscode.window.showErrorMessage('Open a workspace first'); return; }
         const configPath = path.join(root, 'zumito.config.ts');
         if (!fs.existsSync(configPath)) { vscode.window.showErrorMessage('No zumito.config.ts found'); return; }
 
-        const name = await vscode.window.showInputBox({ prompt: 'Module npm package name', placeHolder: '@zumito-team/analytics-module' });
+        const name = prefilledName || await vscode.window.showInputBox({ prompt: 'Module npm package name', placeHolder: '@zumito-team/analytics-module' });
         if (!name) return;
 
         const opt = await vscode.window.showQuickPick([
@@ -401,7 +404,183 @@ function activate(context) {
             return result;
         }
     } catch(e) {
-        console.error('[Zumito] Edit translation error:', e.message);
+        console.error('[Zumito] Embed editor error:', e.message);
+    }
+
+    // Visual config editor
+    try {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('zumito-cli.editConfig', async function() {
+                var doc;
+                var editor = vscode.window.activeTextEditor;
+
+                // Try to find zumito.config.ts in workspace
+                var configUri;
+                if (editor && editor.document.fileName.endsWith('zumito.config.ts')) {
+                    doc = editor.document;
+                } else {
+                    var root = getProjectRoot();
+                    if (!root) {
+                        vscode.window.showErrorMessage('No workspace open');
+                        return;
+                    }
+                    var configPath = path.join(root, 'zumito.config.ts');
+                    if (!fs.existsSync(configPath)) {
+                        vscode.window.showErrorMessage('zumito.config.ts not found in project root');
+                        return;
+                    }
+                    configUri = vscode.Uri.file(configPath);
+                    doc = await vscode.workspace.openTextDocument(configUri);
+                    await vscode.window.showTextDocument(doc, { preview: false });
+                }
+
+                var source = doc.getText();
+                var config = parseConfig(source);
+                var panel = vscode.window.createWebviewPanel(
+                    'zumitoConfigEditor',
+                    'Config: zumito.config.ts',
+                    vscode.ViewColumn.Beside,
+                    { enableScripts: true, retainContextWhenHidden: true }
+                );
+
+                var htmlPath = path.join(__dirname, 'configEditor.html');
+                var html = fs.readFileSync(htmlPath, 'utf8');
+                panel.webview.html = html;
+
+                panel.webview.onDidReceiveMessage(function(msg) {
+                    if (msg.type === 'save') {
+                        try {
+                            var newSource = generateConfig(source, msg.config);
+                            var fullRange = new vscode.Range(
+                                doc.positionAt(0),
+                                doc.positionAt(doc.getText().length)
+                            );
+                            var edit = new vscode.WorkspaceEdit();
+                            edit.replace(doc.uri, fullRange, newSource);
+                            vscode.workspace.applyEdit(edit).then(function() {
+                                panel.webview.postMessage({ type: 'toast', text: 'Config saved!' });
+                            });
+                        } catch (e) {
+                            vscode.window.showErrorMessage('Error saving config: ' + e.message);
+                        }
+                    } else if (msg.type === 'openModules') {
+                        vscode.commands.executeCommand('zumito-cli.modules.configure');
+                    }
+                });
+
+                // Send init data after webview is ready
+                setTimeout(function() {
+                    panel.webview.postMessage({ type: 'init', config: config });
+                }, 300);
+            })
+        );
+    } catch(e) {
+        console.error('[Zumito] Config editor error:', e.message);
+    }
+
+    // Embed visual editor
+    try {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('zumito-cli.editEmbed', function() {
+                openEmbedEditor(context);
+            })
+        );
+
+        // CodeActionProvider — shows lightbulb on lines with EmbedBuilder
+        context.subscriptions.push(
+            vscode.languages.registerCodeActionsProvider('typescript', {
+                provideCodeActions: function(doc, range) {
+                    var line = doc.lineAt(range.start.line).text;
+                    if (!/EmbedBuilder|\.setTitle|\.setDescription|\.addField/.test(line)) return [];
+                    var action = new vscode.CodeAction('Edit embed visually', vscode.CodeActionKind.QuickFix);
+                    action.command = { command: 'zumito-cli.editEmbed', title: 'Edit embed visually' };
+                    return [action];
+                }
+            }, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] })
+        );
+    } catch(e) {
+        console.error('[Zumito] Embed editor error:', e.message);
+    }
+
+    // Discord Developer Portal
+    try {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('zumito-cli.discordPortal', function() {
+                var root = getProjectRoot();
+                var clientId = '';
+
+                if (root) {
+                    var envPath = path.join(root, '.env');
+                    var envPathLocal = path.join(root, '.env.local');
+                    var envFile = fs.existsSync(envPath) ? envPath : (fs.existsSync(envPathLocal) ? envPathLocal : null);
+                    if (envFile) {
+                        var envContent = fs.readFileSync(envFile, 'utf8');
+                        var lines = envContent.split('\n');
+                        for (var li = 0; li < lines.length; li++) {
+                            var eq = lines[li].indexOf('=');
+                            if (eq === -1) continue;
+                            var key = lines[li].substring(0, eq).trim();
+                            if (key === 'DISCORD_CLIENT_ID') {
+                                clientId = lines[li].substring(eq + 1).trim();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!clientId) {
+                    vscode.window.showErrorMessage('DISCORD_CLIENT_ID not found in project .env' + (root ? ' at ' + root : ' (no workspace open)'));
+                    return;
+                }
+
+                vscode.window.showQuickPick([
+                    { label: 'Open Developer Portal', description: 'Open Discord Developer Portal in browser', value: 'portal' },
+                    { label: 'Generate Invite URL', description: 'Copy bot invite URL with calculated permissions', value: 'invite' },
+                    { label: 'Regenerate Token', description: 'Open the Bot page to reset token', value: 'token' },
+                ], { placeHolder: 'Discord Developer Portal' }).then(function(opt) {
+                    if (!opt) return;
+
+                    if (opt.value === 'portal') {
+                        vscode.env.openExternal(vscode.Uri.parse('https://discord.com/developers/applications/' + clientId));
+                    } else if (opt.value === 'token') {
+                        vscode.env.openExternal(vscode.Uri.parse('https://discord.com/developers/applications/' + clientId + '/bot'));
+                    } else if (opt.value === 'invite') {
+                        var PermissionFlagsBits = { SendMessages: 2048n, ReadMessageHistory: 65536n, ViewChannel: 1024n, EmbedLinks: 16384n, AddReactions: 64n, UseExternalEmojis: 262144n, Connect: 1048576n, Speak: 2097152n };
+                        var basePerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ReadMessageHistory | PermissionFlagsBits.ViewChannel | PermissionFlagsBits.EmbedLinks;
+
+                        if (root) {
+                            var cmdsDir = path.join(root, 'src', 'modules');
+                            if (fs.existsSync(cmdsDir)) {
+                                var entries = fs.readdirSync(cmdsDir, { withFileTypes: true });
+                                for (var i = 0; i < entries.length; i++) {
+                                    if (!entries[i].isDirectory()) continue;
+                                    var cmdsFull = path.join(cmdsDir, entries[i].name, 'commands');
+                                    if (!fs.existsSync(cmdsFull)) continue;
+                                    var files = fs.readdirSync(cmdsFull, { withFileTypes: true });
+                                    for (var j = 0; j < files.length; j++) {
+                                        if (!files[j].isFile() || !files[j].name.endsWith('.ts')) continue;
+                                        try {
+                                            var content = fs.readFileSync(path.join(cmdsFull, files[j].name), 'utf8');
+                                            var bpMatch = content.match(/botPermissions\s*[=:]\s*\[(.*?)\]/s);
+                                            if (!bpMatch) continue;
+                                            var str = bpMatch[1];
+                                            var bits = str.match(/\d+n?/g);
+                                            if (bits) bits.forEach(function(b) { basePerms |= BigInt(b.replace('n', '')); });
+                                        } catch(e) {}
+                                    }
+                                }
+                            }
+                        }
+
+                        var url = 'https://discord.com/oauth2/authorize?client_id=' + clientId + '&permissions=' + basePerms.toString() + '&scope=bot%20applications.commands';
+                        vscode.env.clipboard.writeText(url);
+                        vscode.window.showInformationMessage('Invite URL copied to clipboard!');
+                    }
+                });
+            })
+        );
+    } catch(e) {
+        console.error('[Zumito] Discord Portal error:', e.message);
     }
 
     console.log('[Zumito] Extension activated');

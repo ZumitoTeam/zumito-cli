@@ -21,7 +21,7 @@ test('should create a new project', async () => {
     expect(fs.existsSync('test')).toBe(true); 
     expect(fs.existsSync('test/.env')).toBe(true);
     expect(fs.existsSync('test/node_modules')).toBe(true);
-    expect(fs.readFileSync('test/.env.local', 'utf8')).toContain('MONGO_QUERY_STRING=mongodb://localhost:27017/test');
+    expect(fs.readFileSync('test/.env', 'utf8')).toContain('DATABASE_URI=mongodb://localhost:27017/test');
     expect(fs.existsSync('test/.git')).toBe(false);
 });
 
