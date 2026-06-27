@@ -21,5 +21,3 @@ jobs:
           npm version "${{ github.ref_name }}" --no-git-tag-version
           echo "New version: ${{ github.ref_name }}"
           npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
