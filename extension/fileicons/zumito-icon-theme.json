@@ -1,0 +1,12 @@
+{
+  "iconDefinitions": {
+    "_zumito_config": {
+      "iconPath": "../icons/zumito-config.svg"
+    }
+  },
+  "fileNames": {
+    "zumito.config.ts": "_zumito_config"
+  },
+  "fileExtensions": {},
+  "languageIds": {}
+}
