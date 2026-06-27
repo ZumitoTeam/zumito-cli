@@ -21,5 +21,6 @@ jobs:
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version
+          echo "Auth as: $(npm whoami)"
           echo "Publishing version: $VERSION"
           npm publish --provenance --access public
