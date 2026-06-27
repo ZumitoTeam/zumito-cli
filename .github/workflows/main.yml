@@ -18,9 +18,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: |
+          echo "npm version: $(npm -v)"
+          echo "node version: $(node -v)"
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL: ${ACTIONS_ID_TOKEN_REQUEST_URL:+set}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+set}"
+          npm whoami 2>&1 || true
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version
-          echo "Auth as: $(npm whoami)"
-          echo "Publishing version: $VERSION"
           npm publish --provenance --access public
