@@ -20,4 +20,4 @@ jobs:
       - run: |
           npm version "${{ github.ref_name }}" --no-git-tag-version
           echo "New version: ${{ github.ref_name }}"
-          npm publish --access public
+          npm publish --provenance --access public
