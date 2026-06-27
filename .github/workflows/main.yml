@@ -18,6 +18,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: |
-          npm version "${{ github.ref_name }}" --no-git-tag-version
-          echo "New version: ${{ github.ref_name }}"
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version
+          echo "Publishing version: $VERSION"
           npm publish --provenance --access public
