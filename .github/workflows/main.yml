@@ -11,21 +11,13 @@ jobs:
      contents: read
      id-token: write
     steps:
-      - uses: actions/checkout@v3
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: |
-          # Update the package.json file
           npm version "${{ github.ref_name }}" --no-git-tag-version
-
-          # Log the new version to the console
           echo "New version: ${{ github.ref_name }}"
-          
-          # Publish the new version
-          npm publish --provenance -access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          npm publish --provenance --access public
